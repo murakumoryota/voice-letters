@@ -1,0 +1,970 @@
+<!DOCTYPE html>
+<html lang="ja"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Voice Letters</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@500;600&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+/* VOICE: tender and quiet, a parent's letter kept for eighteen years
+   IDEA: a stationery box; opening the app opens an envelope, inside is today's blank letter
+   PICTURE: intro envelope that floats in and opens; the writing form is the page's picture
+   COLOUR and TYPE: white paper, ink black, indigo wax; Shippori Mincho + Zen Kaku Gothic New
+   LAYOUT: intro overlay → two tabs (書く: catch + countdown + form / 送った手紙: 18-slot shelf + log) */
+:root{color-scheme:light dark;--bg:light-dark(#fff,#121315);--paper:light-dark(#fff,#1b1c1f);--ink:light-dark(#1c1c1f,#f1f1f3);--mute:light-dark(#85858b,#9b9ba3);--line:light-dark(#e6e6ea,#2d2e33);--soft:light-dark(#f5f5f7,#1f2024);--seal:light-dark(#8a1c1c,#a8332d);--sealHi:light-dark(#c4433b,#dc6a60);--btn:light-dark(#3d3b39,#e7e4e0);--btnInk:light-dark(#fff,#1d1c1b);--warn:light-dark(#a8463d,#e48d84)}
+:root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.7 "Zen Kaku Gothic New",system-ui,sans-serif;overflow-x:clip;-webkit-font-smoothing:antialiased}
+.wrap{max-width:720px;margin:0 auto;padding:0 max(5vw,18px)}
+.wide-wrap{max-width:1040px}
+
+/* ---- intro ---- */
+#intro{position:fixed;inset:0;background:var(--bg);z-index:30;display:grid;place-items:center;cursor:pointer;transition:opacity .7s ease}
+#intro.out{opacity:0;pointer-events:none}
+#intro svg{width:min(78vw,380px);height:auto;overflow:visible}
+#intro .skip{position:absolute;bottom:calc(28px + env(safe-area-inset-bottom));left:0;right:0;text-align:center;font-size:13px;color:var(--mute)}
+.i-env{opacity:0;transform:translateY(24px);animation:float 1.1s cubic-bezier(.2,.7,.2,1) .15s forwards}
+.i-paper{fill:var(--paper);stroke:var(--line);stroke-width:1.5}.i-shade{fill:var(--soft)}
+.i-flap,.i-flapo{transform-box:fill-box}
+.i-flap{transform-origin:50% 0}
+.i-flapo{transform-origin:50% 100%;transform:scaleY(0)}
+.i-letter{opacity:0}
+#intro.auto .i-flap{animation:shut .38s ease-in 1.15s forwards}
+#intro.auto .i-flapo{animation:open .45s ease-out 1.53s forwards}
+#intro.auto .i-seal{animation:fade .3s ease 1s forwards}
+#intro.auto .i-letter{animation:show .01s linear 1.5s forwards,rise .9s cubic-bezier(.2,.7,.2,1) 1.95s forwards}
+#intro.gift.go .i-seal{transform-box:fill-box;transform-origin:12% 88%;animation:peel .85s cubic-bezier(.4,0,.6,1) forwards}
+@keyframes peel{0%{transform:none}25%{transform:rotate(-10deg) translate(3px,-5px) scale(1.04)}55%{transform:rotate(-34deg) translate(26px,-34px) scale(1.08)}100%{transform:rotate(-80deg) translate(120px,60px) scale(.9);opacity:0}}
+#intro.go .i-seal{animation:fade .3s ease .05s forwards}
+#intro.go .i-flap{animation:shut .38s ease-in .2s forwards}
+#intro.gift.go .i-flap{animation-delay:.8s}#intro.gift.go .i-flapo{animation-delay:1.18s}#intro.gift.go .i-letter{animation-delay:1.15s,1.6s}
+#intro.go .i-flapo{animation:open .45s ease-out .58s forwards}
+#intro.go .i-letter{animation:show .01s linear .55s forwards,rise .9s cubic-bezier(.2,.7,.2,1) 1s forwards}
+#intro .msg{position:absolute;top:calc(14vh + env(safe-area-inset-top));left:0;right:0;text-align:center;padding:0 24px}
+#intro .msg b{display:block;font:500 clamp(26px,6vw,34px)/1.4 "Shippori Mincho",serif;color:var(--ink)}
+#intro.gift .i-env{cursor:pointer}
+#intro.gift:not(.go) .i-seal{animation:pulse 2.4s ease-in-out 1.2s infinite;transform-box:fill-box;transform-origin:center}
+@keyframes pulse{50%{transform:scale(1.06)}}
+@keyframes show{to{opacity:1}}
+.i-letter rect.p{fill:var(--paper);stroke:var(--line);stroke-width:1.5}.i-letter .w rect{fill:var(--seal);opacity:.55}
+.i-letter text{fill:var(--ink);font:500 20px "Shippori Mincho",serif;text-anchor:middle}
+.wax{fill:url(#wax);filter:drop-shadow(0 3px 4px rgb(80 0 0/.28))}.ring{fill:none;stroke:rgb(255 255 255/.25);stroke-width:1.2}.ring2{fill:none;stroke:rgb(0 0 0/.18);stroke-width:2}.num{fill:#fff;font:500 30px "Shippori Mincho",serif;text-anchor:middle;opacity:.92}
+@keyframes float{to{opacity:1;transform:none}}
+@keyframes shut{to{transform:scaleY(0)}}
+@keyframes open{to{transform:scaleY(1)}}
+@keyframes fade{to{opacity:0}}
+@keyframes rise{to{transform:translateY(-150px)}}
+@media(prefers-reduced-motion:reduce){.i-env,.i-flap,.i-flapo,.i-seal,.i-letter{animation-duration:.01s!important;animation-delay:0s!important}}
+
+/* ---- header & tabs ---- */
+header{position:sticky;top:0;z-index:5;background:color-mix(in srgb,var(--bg) 92%,transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+.bar{display:flex;justify-content:space-between;align-items:center;gap:12px;min-height:60px}
+.mark{font:600 15px/1 "Shippori Mincho",serif;letter-spacing:.06em}
+.tabs{display:flex;gap:4px;background:var(--soft);padding:4px;border-radius:999px}
+.tabs button{appearance:none;border:0;background:transparent;color:var(--mute);font:500 14px "Zen Kaku Gothic New",sans-serif;min-height:38px;padding:0 16px;border-radius:999px;cursor:pointer;white-space:nowrap}
+.tabs button[aria-selected=true]{background:var(--paper);color:var(--ink);box-shadow:0 1px 3px rgb(0 0 0/.08)}
+.note{font-size:13px;color:var(--mute)}
+main{animation:appear .6s ease both}@keyframes appear{from{opacity:0;transform:translateY(8px)}}
+
+h1{font:500 clamp(32px,6vw,46px)/1.3 "Shippori Mincho",serif;margin:0 0 12px;text-wrap:balance}
+h2{font:500 22px/1.4 "Shippori Mincho",serif;margin:0}
+h3{font:500 24px/1.45 "Shippori Mincho",serif;margin:0 0 6px;text-wrap:balance}
+.sub{color:var(--mute);font-size:14px;margin:0}
+.catch{padding:clamp(32px,6vw,56px) 0 28px;text-align:center}
+.count{display:flex;gap:18px;justify-content:center;align-items:baseline;margin:22px 0 4px}
+.count b{font:500 clamp(36px,8vw,50px)/1 "Shippori Mincho",serif;font-variant-numeric:tabular-nums}
+.count span{color:var(--mute);font-size:14px;margin-left:3px}
+.form{border:1px solid var(--line);border-radius:18px;padding:clamp(18px,4vw,32px);margin-bottom:56px;background:var(--paper)}
+
+.btn{text-decoration:none;appearance:none;border:1px solid var(--btn);background:var(--btn);color:var(--btnInk);font:500 16px/1 "Zen Kaku Gothic New",sans-serif;padding:0 26px;min-height:50px;border-radius:999px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:10px}
+.btn.ghost{background:transparent;color:var(--ink);border-color:var(--line)}
+.btn:focus-visible,.chip:focus-visible,.seg button:focus-visible,.tabs button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--seal);outline-offset:2px}
+.row{margin:0 0 22px}.row>label,.lab{display:block;font-size:13px;color:var(--mute);margin-bottom:8px}
+.seg{display:flex;gap:8px;flex-wrap:wrap}
+.seg button{appearance:none;border:1px solid var(--line);background:transparent;color:var(--ink);font:500 15px "Zen Kaku Gothic New",sans-serif;min-height:44px;padding:0 18px;border-radius:999px;cursor:pointer}
+.seg button[aria-pressed=true]{background:var(--btn);color:var(--btnInk);border-color:var(--btn)}
+.seg input{width:130px}
+input,select,textarea{font:16px "Zen Kaku Gothic New",sans-serif;color:var(--ink);background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:10px 12px;min-height:44px;width:100%}
+textarea{resize:vertical;line-height:1.7}
+.rec{border:1px solid var(--line);border-radius:14px;padding:18px;text-align:center;background:var(--bg)}
+.wave{width:100%;height:64px;display:block;color:var(--sealHi)}
+.recbtn{appearance:none;width:72px;height:72px;border-radius:50%;border:1px solid var(--line);background:var(--paper);cursor:pointer;display:grid;place-items:center;margin:8px auto 4px}
+.recbtn i{width:26px;height:26px;border-radius:50%;background:var(--warn);transition:border-radius .2s,width .2s,height .2s}
+.recbtn.on i{border-radius:5px;width:22px;height:22px}
+.time{font:500 20px "Shippori Mincho",serif;font-variant-numeric:tabular-nums}
+audio{width:100%;margin-top:12px}
+.file{display:inline-flex;align-items:center;min-height:44px;color:var(--seal);font-size:14px;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+.file input{position:absolute;opacity:0;width:1px;height:1px}
+.thumb{max-width:100%;border-radius:10px;margin-top:10px;display:block}
+.full{width:100%}
+.pair{display:flex;gap:10px;margin-top:8px}.pair .btn{flex:1;white-space:nowrap;padding:0 14px}
+
+/* ---- sent tab ---- */
+.sent-h{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:6px 16px;padding:32px 0 20px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:14px}
+.card{border:1px solid var(--line);border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:10px;background:var(--paper);min-height:150px}
+.card.empty{border-style:dashed;background:transparent}
+.card.next{border:1px solid var(--seal)}
+.mini{position:relative;height:46px;border:1px solid var(--line);border-radius:4px;background:linear-gradient(to bottom right,transparent calc(50% - .75px),var(--line) 50%,transparent calc(50% + .75px)) left/50% 100% no-repeat,linear-gradient(to bottom left,transparent calc(50% - .75px),var(--line) 50%,transparent calc(50% + .75px)) right/50% 100% no-repeat}
+.card.empty .mini{opacity:.45}
+.dot{position:absolute;left:50%;top:50%;width:18px;height:18px;margin:-9px;border-radius:50%;background:radial-gradient(circle at 35% 35%,var(--sealHi),var(--seal))}
+.ct{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.ct b{font:500 18px "Shippori Mincho",serif}.ct small{font-size:13px;color:var(--mute);white-space:nowrap}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:auto}
+.chip{appearance:none;border:1px solid var(--line);background:var(--soft);color:var(--ink);font:500 13px/1 "Zen Kaku Gothic New",sans-serif;padding:0 12px;min-height:34px;border-radius:999px;cursor:pointer;white-space:nowrap}
+.chip.add{border-color:var(--seal);color:var(--seal);background:transparent}
+.log{border-top:1px solid var(--line);margin-top:40px;padding:28px 0 56px}
+.log ul{list-style:none;padding:0;margin:12px 0 0}.log li{font-size:14px;color:var(--mute);padding:8px 0;border-bottom:1px solid var(--line)}
+
+/* ---- sheet ---- */
+.ov{position:fixed;inset:0;background:color-mix(in srgb,var(--ink) 28%,transparent);display:flex;align-items:flex-end;justify-content:center;z-index:10}
+.sheet{position:relative;background:var(--bg);width:min(560px,100%);max-height:92vh;overflow:auto;border-radius:18px 18px 0 0;padding:28px clamp(18px,5vw,36px) calc(28px + env(safe-area-inset-bottom))}
+@media(min-width:700px){.ov{align-items:center}.sheet{border-radius:18px}}
+.x{position:absolute;top:14px;right:14px;appearance:none;border:0;background:none;color:var(--mute);font:14px "Zen Kaku Gothic New",sans-serif;min-height:44px;padding:0 10px;cursor:pointer}
+.lock{text-align:center;padding:12px 0 4px}
+.hold{appearance:none;border:0;background:none;cursor:pointer;width:132px;height:132px;position:relative;margin:26px auto 10px;display:block;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+.hold svg{position:absolute;inset:0}
+.hold .bg{fill:none;stroke:var(--line);stroke-width:3}.hold .prog{fill:none;stroke:var(--seal);stroke-width:3;stroke-linecap:round;transform:rotate(-90deg);transform-origin:50% 50%}
+.hold .wx{position:absolute;inset:22px;border-radius:50%;background:radial-gradient(circle at 35% 35%,var(--sealHi),var(--seal));box-shadow:inset 0 0 0 7px color-mix(in srgb,var(--seal) 70%,#000 0%),inset 0 0 0 8px rgb(255 255 255/.22),0 3px 8px rgb(80 0 0/.25);display:grid;place-items:center;color:#fff;font:500 26px "Shippori Mincho",serif;transition:transform .2s}
+.hold:active .wx{transform:scale(.96)}
+.phrase{font:500 18px "Shippori Mincho",serif;-webkit-user-select:none;user-select:none;margin:6px 0 12px}
+.err{color:var(--warn);font-size:14px;min-height:22px;margin:6px 0 0}
+.letter{white-space:pre-wrap;font:17px/2 "Shippori Mincho",serif;margin-top:18px;padding-top:18px;border-top:1px solid var(--line)}
+.eyebrow{font-size:13px;color:var(--mute);margin:0 0 6px}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--btn);color:var(--btnInk);padding:12px 18px;border-radius:999px;font-size:14px;z-index:20;max-width:90vw}
+@media(max-width:420px){#app .mark{display:none}#app .bar{justify-content:center}}
+
+.setup{max-width:440px;margin:0 auto;padding:clamp(40px,8vw,72px) 0 64px;text-align:center}
+.setup .form{text-align:left;margin-top:28px}
+.setup .seg button{flex:1}
+.me{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--mute);margin-top:14px}
+.me button{appearance:none;border:0;background:none;color:var(--seal);font:13px "Zen Kaku Gothic New",sans-serif;text-decoration:underline;text-underline-offset:3px;cursor:pointer;min-height:32px;padding:0 4px}
+.clock{font:500 clamp(18px,4.5vw,22px)/1 "Shippori Mincho",serif;font-variant-numeric:tabular-nums;color:var(--mute);margin-top:12px;letter-spacing:.04em}
+.clock span{font-size:12px;margin:0 6px 0 2px}
+.target{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap;padding-bottom:18px;margin-bottom:22px;border-bottom:1px solid var(--line)}
+.target b{font:500 20px "Shippori Mincho",serif}
+.tabs button{padding:0 14px}
+@media(max-width:420px){.tabs button{padding:0 11px;font-size:13px}}
+.linkbtn{appearance:none;border:0;background:none;color:var(--seal);font:14px "Zen Kaku Gothic New",sans-serif;cursor:pointer;min-height:44px;padding:0 4px}
+.send{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;border:1px solid var(--seal);border-radius:14px;padding:20px;margin-bottom:24px}
+.send b{font:500 20px "Shippori Mincho",serif;display:block;margin-bottom:4px}
+.send>div{flex:1 1 260px}
+.set{display:grid;gap:20px;padding:32px 0 64px}
+.set h2{margin-bottom:4px}
+.set .form{margin:0}
+.glist{display:grid;gap:10px;padding-bottom:64px}
+.gl{appearance:none;width:100%;display:grid;grid-template-columns:64px minmax(0,1fr) auto;align-items:center;gap:16px;text-align:left;border:1px solid var(--line);background:var(--paper);color:var(--ink);border-radius:12px;padding:14px 16px;cursor:pointer;font:inherit}
+.gl .mini{height:40px}.gl.done .dot{opacity:.35}
+.gl b{font:500 18px "Shippori Mincho",serif;display:block}.gl small{color:var(--mute);font-size:13px}
+.gl .gd{font-size:13px;color:var(--mute);white-space:nowrap}
+.unseal{width:96px;height:96px;margin:4px auto 18px;border-radius:50%;background:radial-gradient(circle at 35% 35%,var(--sealHi),var(--seal));display:grid;place-items:center;color:#fff;font:500 30px "Shippori Mincho",serif}
+@media(prefers-reduced-motion:no-preference){.unseal{animation:crack 1s ease .2s forwards}@keyframes crack{to{transform:scale(1.25);opacity:0;height:0;margin:0}}}
+.reveal{text-align:center}
+.reveal audio{margin-top:18px}
+/* ---- 送った手紙 ---- */
+.envs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:22px 14px}
+@media(min-width:640px){.envs{grid-template-columns:repeat(6,minmax(0,1fr))}}
+.env{appearance:none;border:0;background:none;padding:0;color:var(--ink);font:inherit;display:block;width:100%;cursor:pointer;text-align:center}
+.env:disabled{cursor:default}
+.env svg{width:100%;height:auto;display:block;overflow:visible}
+.env .pp{fill:var(--paper);stroke:var(--line);stroke-width:1.2}
+.env .fl{fill:none;stroke:var(--line);stroke-width:1.2}
+.env .sl{fill:url(#waxS)}
+.env .sn{fill:#fff;font:500 15px "Shippori Mincho",serif;text-anchor:middle}
+.env .en{fill:var(--mute);font:500 20px "Shippori Mincho",serif;text-anchor:middle}
+.env.sealed .pp{filter:drop-shadow(0 4px 8px rgb(0 0 0/.06))}
+.env.next .pp{stroke:var(--seal);stroke-dasharray:4 3}.env.next .en{fill:var(--seal)}
+.env.empty .pp{stroke-dasharray:4 3}
+.env.future{opacity:.3}
+.env small{display:block;margin-top:8px;font-size:12px;color:var(--mute);min-height:18px;white-space:nowrap}
+.env.next small{color:var(--seal)}
+.env:focus-visible{outline:2px solid var(--seal);outline-offset:4px;border-radius:6px}
+@media(prefers-reduced-motion:no-preference){.env.sealed{animation:in .5s ease both}}
+.sum{padding:clamp(32px,6vw,52px) 0 30px;text-align:center}
+.big{display:flex;justify-content:center;align-items:baseline;gap:8px;margin-top:6px}
+.big b{font:500 clamp(60px,15vw,88px)/1 "Shippori Mincho",serif;font-variant-numeric:tabular-nums}
+.big span{font-size:16px;color:var(--mute)}
+.thread{position:relative;display:flex;justify-content:space-between;align-items:center;height:20px;margin:28px 2px 8px}
+.thread::before,.thread::after{content:"";position:absolute;left:0;top:50%;height:1px}
+.thread::before{right:0;background:var(--line)}.thread::after{width:var(--p,0%);background:var(--seal)}
+.thread i{position:relative;z-index:1;width:9px;height:9px;border-radius:50%;background:var(--bg);border:1px solid var(--line)}
+.thread i.s{width:12px;height:12px;border:0;background:radial-gradient(circle at 35% 35%,var(--sealHi),var(--seal))}
+.thread i.n{width:12px;height:12px;border:1.5px solid var(--seal);box-shadow:0 0 0 4px color-mix(in srgb,var(--seal) 14%,transparent)}
+.thread-l{display:flex;justify-content:space-between;font-size:12px;color:var(--mute)}
+.tl{list-style:none;margin:0;padding:0;border-top:1px solid var(--line)}
+.tr{position:relative;display:grid;grid-template-columns:64px 20px minmax(0,1fr);gap:14px;padding:18px 0;border-bottom:1px solid var(--line)}
+.ta{text-align:right;white-space:nowrap}.ta b{font:500 30px/1 "Shippori Mincho",serif;display:block;font-variant-numeric:tabular-nums}.ta span{font-size:12px;color:var(--mute)}
+.tm{position:relative;display:flex;justify-content:center;padding-top:9px}
+.tm::before{content:"";position:absolute;left:50%;top:-18px;bottom:-18px;width:1px;background:var(--line)}
+.tr:first-child .tm::before{top:14px}.tr:last-child .tm::before{bottom:auto;height:32px}
+.node{position:relative;z-index:1}
+.node{width:11px;height:11px;border-radius:50%;border:1px solid var(--line);background:var(--bg)}
+.tr.sealed .node{border:0;width:13px;height:13px;background:radial-gradient(circle at 35% 35%,var(--sealHi),var(--seal))}
+.tr.next .node{border:1.5px solid var(--seal);box-shadow:0 0 0 4px color-mix(in srgb,var(--seal) 14%,transparent)}
+.tr.next{background:linear-gradient(90deg,transparent,color-mix(in srgb,var(--seal) 6%,transparent) 30%,transparent)}
+.tb{padding-top:4px}.tb small{display:block;font-size:13px;color:var(--mute);margin-bottom:10px}
+.tr.future{opacity:.38}.tr.future .tb small{margin:0}
+.tl .chips{margin:0}
+.chip.w{display:inline-flex;align-items:center;gap:8px;background:var(--paper)}
+.chip.w::before{content:"";width:10px;height:10px;border-radius:50%;background:radial-gradient(circle at 35% 35%,var(--sealHi),var(--seal))}
+.chip.add{border-style:dashed}
+.sendband{background:var(--btn);color:var(--btnInk);border-radius:18px;padding:clamp(24px,5vw,36px);margin-top:40px;display:grid;gap:18px}
+.sendband b{font:500 24px/1.4 "Shippori Mincho",serif;display:block}
+.sendband p{margin:6px 0 0;font-size:14px;opacity:.72}
+.sendband .btn{background:var(--btnInk);color:var(--btn);border-color:var(--btnInk);justify-self:start}
+@media(prefers-reduced-motion:no-preference){.tr.sealed{animation:in .5s ease both}}
+.so{position:fixed;inset:0;z-index:40;background:var(--bg);display:grid;place-items:center;align-content:center;gap:28px;padding:24px;transition:opacity .5s}
+.so.out{opacity:0}
+.so svg{width:min(78vw,360px);height:auto;overflow:visible}
+.so-env{transform-box:view-box;transform-origin:50% 60%}
+.so-letter{transform:translateY(-150px);animation:sink .8s cubic-bezier(.4,0,.2,1) .25s forwards}
+@keyframes sink{99%{opacity:1;transform:none}to{opacity:0;transform:none}}
+.so-flapo{transform-box:fill-box;transform-origin:50% 100%;animation:shut .3s ease-in 1.05s forwards}
+.so-flap{transform-box:fill-box;transform-origin:50% 0;transform:scaleY(0);animation:open .35s ease-out 1.35s forwards}
+.wb,.wi,.wst,.wsh{opacity:0}.wst,.wsh{transform-box:view-box;transform-origin:50px 50px}.wb{transform-box:fill-box;transform-origin:50% 50%}
+@keyframes blob{from{opacity:0;transform:scale(.35)}to{opacity:1;transform:none}}
+@keyframes spread{to{transform:scale(1.07)}}
+@keyframes stamp{55%{opacity:1;transform:scale(.9)}to{opacity:1;transform:scale(1)}}
+.so-env.fly{animation:fly .85s cubic-bezier(.55,0,.75,.2) forwards}
+.so{overflow:hidden}.so svg{overflow:visible}
+@keyframes fly{20%{transform:translate(-2%,4%) rotate(3deg) scale(1.02)}to{transform:translate(85%,-170%) rotate(-22deg) scale(.18);opacity:0}}
+.so-msg{text-align:center;min-height:64px;margin:0}
+.so-msg b{display:block;font:500 min(24px,calc((100vw - 48px) / 17))/1.4 "Shippori Mincho",serif;white-space:nowrap}
+.so-msg .sub{display:block;margin-top:4px}
+.so.done .so-msg{animation:in .5s ease both}
+@media(prefers-reduced-motion:reduce){.so *{animation-duration:.01s!important;animation-delay:0s!important}}
+.wsv{display:block;width:100%;height:100%;overflow:visible}
+.wsv text{font:500 24px "Shippori Mincho",serif;text-anchor:middle}
+.wsv .eng{fill:#3d0404;fill-opacity:.9}.wsv .eng2{fill:#ffc7bb;fill-opacity:.35}
+.hold .wx,.unseal{background:none!important;box-shadow:none!important;border-radius:0}
+.unseal{width:110px;height:110px}
+.env.gift.seen .wsv{opacity:.45}.env.gift.seen small{opacity:.6}
+@media(prefers-reduced-motion:no-preference){.env.gift{animation:in .6s ease both}}
+#gList{padding-bottom:64px}#gCta:empty,#gNote:empty{display:none}
+.letterwrap{margin-bottom:56px}
+.paper{position:relative;background:var(--paper);border:1px solid var(--line);border-radius:3px;padding:clamp(26px,6vw,40px) clamp(22px,6vw,40px) 30px;box-shadow:0 1px 2px rgb(0 0 0/.04),0 14px 30px -14px rgb(0 0 0/.16)}
+.paper .to{font:500 24px/1.4 "Shippori Mincho",serif;margin:0}
+.paper .occ{font-size:13px;color:var(--mute);margin:4px 0 20px}
+.lines{position:relative;height:144px;background:repeating-linear-gradient(to bottom,transparent 0 35px,var(--line) 35px 36px)}
+.lines .wave{position:absolute;inset:0;width:100%;height:100%}
+.lines .ph{position:absolute;left:2px;top:6px;font:15px/1.6 "Shippori Mincho",serif;color:var(--mute);opacity:.75}
+.paper.has .ph{display:none}
+.recrow{display:flex;align-items:center;justify-content:center;gap:14px;margin-top:18px}
+.recrow .recbtn{margin:0;width:58px;height:58px}.recrow .recbtn i{width:22px;height:22px}.recrow .recbtn.on i{width:18px;height:18px}
+.paper .hint{text-align:center;margin-top:8px}
+.paper .file{display:flex;justify-content:center;width:max-content;margin:2px auto 0}
+.sign{text-align:right;font:500 16px/1.8 "Shippori Mincho",serif;margin:24px 0 0}
+.letterwrap .act{margin-top:22px}
+.envstage{appearance:none;border:0;background:none;padding:8px 0 0;width:100%;display:block;cursor:pointer;color:var(--ink);font:inherit;text-align:center;margin-bottom:56px}
+.envstage svg{width:min(100%,420px);height:auto;overflow:visible;display:block;margin:0 auto}
+.envstage .i-letter text{fill:var(--ink);font:500 22px "Shippori Mincho",serif;text-anchor:middle}
+.envstage .i-letter rect.p{fill:var(--paper);stroke:var(--line);stroke-width:1.5}
+.envcap{display:block;margin-top:14px}.envcap b{display:block;font:500 20px "Shippori Mincho",serif}.envcap span{font-size:13px;color:var(--mute)}
+@media(prefers-reduced-motion:no-preference){.envstage:not(.go) svg{animation:bob 3.2s ease-in-out infinite}@keyframes bob{50%{transform:translateY(-6px)}}}
+.envstage.go .i-flap{animation:shut .32s ease-in forwards}
+.envstage.go .i-flapo{animation:open .4s ease-out .3s forwards}
+.envstage.go .i-letter{animation:show .01s linear .3s forwards,rise .8s cubic-bezier(.2,.7,.2,1) .62s forwards}
+.envstage.go .envcap{opacity:0;transition:opacity .3s}
+.letterwrap .paper{animation:in .5s ease both}
+.upl{position:relative;margin-top:20px}.upl input{position:absolute;opacity:0;width:1px;height:1px}
+.upl.ghost{background:transparent;color:var(--ink);border-color:var(--line)}
+.rectg{display:block;margin:6px auto 0}
+.paper .hint:empty{display:none}
+.presets{margin-top:10px}.presets button{min-height:36px;font-size:14px;padding:0 14px}
+.chk{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--mute)}.chk input{width:18px;height:18px;min-height:0}
+.count{flex-wrap:wrap}
+.tex{fill:url(#linen);stroke:none;pointer-events:none}.fold{fill:none;stroke:var(--line);stroke-width:1.2}
+#title span,#gTitle span{display:block;font-size:.5em;line-height:1.7;margin-top:10px;color:var(--mute)}
+.env.gift.none{opacity:.3;cursor:default}
+.red .pp,.so.red .i-paper,.envstage.red .i-paper{fill:#a3241e;stroke:#7d1712}.red .fl,.so.red .fold,.envstage.red .fold{stroke:#7d1712}
+.envstage.red .tex{opacity:.25}.envstage.red .i-shade{fill:color-mix(in srgb,#a3241e 14%,var(--soft))}.red .en,.red .n{fill:#f6dc8a}
+.env.red{grid-column:1/-1;justify-self:center;width:calc((100% - 28px)/3)}
+@media(min-width:640px){.env.red{width:calc((100% - 70px)/6)}}
+.env.red.none{opacity:.55}.env.red.future{opacity:.55}
+.so.red .tex{opacity:.25}
+.early{margin:14px 0 0;padding:12px 14px;border:1px solid var(--warn);border-radius:10px;color:var(--warn);font-size:14px;line-height:1.7}
+.howbtn{appearance:none;border:0;background:none;display:block;margin:10px auto 0;cursor:pointer;color:var(--seal);font:14px "Zen Kaku Gothic New",sans-serif;min-height:44px;padding:0 8px;text-decoration:underline;text-underline-offset:3px}
+.howov{position:fixed;inset:0;z-index:50;background:color-mix(in srgb,var(--ink) 34%,transparent);display:grid;place-items:center;padding:16px}
+.howbox{position:relative;background:var(--bg);width:min(440px,100%);max-height:92vh;overflow:auto;border-radius:16px;padding:26px 18px 20px}
+.howbox h3{margin-bottom:6px}
+.howbox h4{font:500 17px "Shippori Mincho",serif;margin:18px 0 8px;display:flex;align-items:center;gap:8px}
+.howbox h4 small{font:500 11px "Zen Kaku Gothic New",sans-serif;background:var(--seal);color:#fff;border-radius:999px;padding:3px 9px}
+.howbox ol{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;counter-reset:h}
+.howbox li{counter-increment:h;background:var(--soft);border-radius:8px;padding:12px 6px 10px;font-size:12px;line-height:1.5;color:var(--mute);text-align:center}
+.howbox li svg{width:40px;height:40px;display:block;margin:0 auto 6px}
+.howbox li b{display:block;font:500 14px "Shippori Mincho",serif;color:var(--ink)}
+.howbox li b::before{content:counter(h) ". "}
+.howbox li span{display:block;margin-top:2px}
+.howbox p{font-size:12px;color:var(--mute);margin:14px 0 0;text-align:center}
+.hd{fill:var(--paper);stroke:var(--ink);stroke-width:2}.hw rect,.hs{fill:var(--seal)}.hl{fill:none;stroke:var(--ink);stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
+</style></head><body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+ <pattern id="linen" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><path d="M0 2.5h5" stroke="#7d705c" stroke-opacity=".07" stroke-width=".8" stroke-dasharray="1.6 .9"/><path d="M2.5 0v5" stroke="#7d705c" stroke-opacity=".05" stroke-width=".7" stroke-dasharray="1.2 1.3"/></pattern>
+ <radialGradient id="wB" cx=".36" cy=".3" r=".85"><stop offset="0" stop-color="#e2594f"/><stop offset=".35" stop-color="#b52822"/><stop offset=".75" stop-color="#861515"/><stop offset="1" stop-color="#5a0a0a"/></radialGradient>
+ <linearGradient id="wRim" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffd2c8" stop-opacity=".7"/><stop offset=".42" stop-color="#ff9a8c" stop-opacity="0"/><stop offset=".6" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#2a0000" stop-opacity=".55"/></linearGradient>
+ <linearGradient id="wPit" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#3a0000" stop-opacity=".45"/><stop offset=".55" stop-color="#3a0000" stop-opacity="0"/><stop offset="1" stop-color="#ffb4a6" stop-opacity=".3"/></linearGradient>
+ <radialGradient id="wPitBase" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#a51f1b"/><stop offset="1" stop-color="#8a1716"/></radialGradient>
+ <filter id="wRough" x="-10%" y="-10%" width="120%" height="120%"><feTurbulence type="fractalNoise" baseFrequency=".055" numOctaves="2" seed="7" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="2.6" xChannelSelector="R" yChannelSelector="G" result="d"/><feDropShadow in="d" dx="0" dy="2.2" stdDeviation="1.8" flood-color="#3b0000" flood-opacity=".38"/></filter>
+ <filter id="wGrain" x="0" y="0" width="100%" height="100%"><feTurbulence type="fractalNoise" baseFrequency="1.6" numOctaves="2" seed="3" result="g"/><feColorMatrix in="g" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 .22 0" result="ga"/><feComposite in="ga" in2="SourceGraphic" operator="in" result="gc"/><feMerge><feMergeNode in="SourceGraphic"/><feMergeNode in="gc"/></feMerge></filter>
+ <filter id="wSoft"><feGaussianBlur stdDeviation="1.4"/></filter>
+ <filter id="wLit" x="-12%" y="-12%" width="124%" height="132%" color-interpolation-filters="sRGB">
+  <feColorMatrix in="SourceGraphic" type="luminanceToAlpha" result="h0"/>
+  <feGaussianBlur in="h0" stdDeviation="1.15" result="h1"/>
+  <feTurbulence type="fractalNoise" baseFrequency=".55" numOctaves="2" seed="11" result="nz"/>
+  <feColorMatrix in="nz" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  .33 .33 .33 0 0" result="nza"/>
+  <feComposite in="h1" in2="nza" operator="arithmetic" k2="1" k3=".006" result="h"/>
+  <feDiffuseLighting in="h" surfaceScale="9" diffuseConstant="1.05" lighting-color="#fff" result="dif"><feDistantLight azimuth="230" elevation="46"/></feDiffuseLighting>
+  <feSpecularLighting in="h" surfaceScale="9" specularConstant="1.2" specularExponent="34" lighting-color="#ffe9e4" result="spc"><feDistantLight azimuth="230" elevation="60"/></feSpecularLighting>
+  <feFlood flood-color="#931510" result="col"/>
+  <feComposite in="col" in2="dif" operator="arithmetic" k1=".95" k2=".16" result="shd"/>
+  <feComposite in="spc" in2="SourceAlpha" operator="in" result="spm"/>
+  <feComposite in="shd" in2="spm" operator="arithmetic" k2="1" k3=".7" result="lit"/>
+  <feComposite in="lit" in2="SourceAlpha" operator="in" result="wax"/>
+  <feDropShadow in="wax" dx=".4" dy="2.4" stdDeviation="1.8" flood-color="#2a0000" flood-opacity=".42"/>
+ </filter>
+ <filter id="wEdge" x="-10%" y="-10%" width="120%" height="120%"><feTurbulence type="fractalNoise" baseFrequency=".06" numOctaves="2" seed="7" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="2.6" xChannelSelector="R" yChannelSelector="G"/></filter>
+ <filter id="wB3" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="3.2"/></filter>
+ <filter id="wB1" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation=".9"/></filter>
+ <symbol id="waxSeal" viewBox="0 0 100 100" overflow="visible">
+  <g filter="url(#wRough)"><path fill="url(#wB)" filter="url(#wGrain)" d="M50 6C62 5 71 9 78 15C86 22 93 30 94 41C95 50 93 57 90 63C89 69 92 74 92.5 80C93 87 87 90 82.5 86C80.5 84 79 81.5 77 80C72 87 63 92 52 93C40 94 28 91 20 84C11 76 6 66 6 54C5 42 9 30 17 21C25 12 37 6 50 6Z"/></g>
+  <circle cx="50" cy="50" r="31" fill="none" stroke="url(#wRim)" stroke-width="7.5"/>
+  <circle cx="50" cy="50" r="27.2" fill="url(#wPitBase)"/>
+  <circle cx="50" cy="50" r="27.2" fill="url(#wPit)"/>
+  <circle cx="50" cy="50" r="23.6" fill="none" stroke="#3a0000" stroke-opacity=".28" stroke-width=".9"/>
+  <circle cx="50.4" cy="50.6" r="23.6" fill="none" stroke="#ffd0c4" stroke-opacity=".18" stroke-width=".7"/>
+  <path d="M24 35A30 30 0 0 1 41 20" fill="none" stroke="#fff" stroke-opacity=".55" stroke-width="2.2" stroke-linecap="round" filter="url(#wSoft)"/>
+  <ellipse cx="27" cy="22" rx="7" ry="3.2" transform="rotate(-35 27 22)" fill="#fff" opacity=".42" filter="url(#wSoft)"/>
+  <ellipse cx="87" cy="80" rx="2.6" ry="1.4" transform="rotate(-30 87 80)" fill="#fff" opacity=".22" filter="url(#wSoft)"/>
+  <ellipse cx="66" cy="84" rx="9" ry="2" transform="rotate(-18 66 84)" fill="#fff" opacity=".12" filter="url(#wSoft)"/>
+ </symbol>
+</defs></svg>
+
+
+<div id="intro">
+  <p class="msg" id="introMsg" hidden><b id="introTo"></b><span class="sub">手紙が届いています</span></p>
+  <svg viewBox="0 0 520 420">
+    <defs><radialGradient id="wax" cx=".36" cy=".34" r=".75"><stop offset="0" style="stop-color:var(--sealHi)"/><stop offset="1" style="stop-color:var(--seal)"/></radialGradient></defs>
+    <g class="i-env">
+      <ellipse class="i-shade" cx="262" cy="398" rx="214" ry="12"/>
+      <rect class="i-paper" x="40" y="114" width="440" height="276" rx="6"/>
+      <path class="i-paper i-flapo" d="M40 114 L260 6 L480 114 Z"/>
+      <g class="i-letter"><rect class="p" x="78" y="128" width="364" height="230" rx="4"/>
+        <text x="260" y="196" id="iTo" style="letter-spacing:.08em">Voice Letter</text><g class="w" id="iw"></g></g>
+      <path class="i-paper" d="M40 114 L260 292 L480 114 L480 384 Q480 390 474 390 L46 390 Q40 390 40 384 Z"/><path class="fold" d="M46 386 L252 298 M474 386 L268 298"/><path class="tex" d="M40 114 L260 292 L480 114 L480 384 Q480 390 474 390 L46 390 Q40 390 40 384 Z"/>
+      <g class="i-flap"><path class="i-paper" d="M40 114 L260 292 L480 114 Z"/><path class="tex" d="M40 114 L260 292 L480 114 Z"/>
+        <g class="i-seal"><svg x="200" y="233" width="120" height="120" viewBox="0 0 100 100" overflow="visible" class="wsv" data-wax="18"></svg></g></g>
+    </g>
+  </svg>
+  <span class="skip" id="introSkip"></span>
+</div>
+
+<!-- ======== 初回設定 ======== -->
+<section id="setup" hidden><div class="wrap"><div class="setup">
+  <h1>はじめに</h1>
+  <div class="form">
+    <div class="row" id="nmRow"><label for="nm">子どもの名前</label><input id="nm" maxlength="20" placeholder="例：はると"></div>
+    <div class="row" id="bdRow"><label for="bd">子どもの誕生日</label><input type="date" id="bd"></div>
+    <p class="note" id="bdSet" hidden></p>
+    <div class="row"><span class="lab">あなたは</span><div class="seg" id="roleSeg"><button type="button" data-v="パパ" aria-pressed="false">パパ</button><button type="button" data-v="ママ" aria-pressed="false">ママ</button></div><p class="note" style="margin:8px 0 0">名前はあとから設定で変えられます。</p></div>
+    <p class="err" id="setErr"></p>
+    <button class="btn full" id="startBtn">はじめる</button>
+  </div>
+</div></div></section>
+
+<!-- ======== 声を登録する側 ======== -->
+<div id="app" hidden>
+<header><div class="wrap wide-wrap bar">
+  <span class="mark">Voice Letters</span>
+  <nav class="tabs" role="tablist">
+    <button role="tab" data-tab="write" aria-selected="true">手紙を書く</button>
+    <button role="tab" data-tab="sent" aria-selected="false">送った手紙</button>
+    <button role="tab" data-tab="settings" aria-selected="false">設定</button>
+  </nav>
+</div></header>
+<main>
+<section id="p-write" role="tabpanel"><div class="wrap">
+  <div class="catch">
+    <h1 id="title">18歳のきみへ<span>毎年の想いと思い出を声にのせる</span></h1>
+    <div class="count" id="count"></div>
+    <div class="clock" id="clock"></div>
+    <p class="note" id="mode"></p>
+  </div>
+  <div class="letterwrap" id="form"></div>
+</div></section>
+
+<section id="p-sent" role="tabpanel" hidden><div class="wrap">
+  <div class="sum">
+    <div class="big"><b id="sumN">0</b><span id="sumT">/ 18</span></div>
+  </div>
+  <div class="envs" id="grid"></div>
+  <div class="sendband" id="sendCard"></div>
+  <div style="height:56px"></div>
+</div></section>
+
+<section id="p-settings" role="tabpanel" hidden><div class="wrap"><div class="set">
+  <div><h2>子どものこと</h2><p class="sub">家族みんなで共通の設定です。</p></div>
+  <div class="form">
+    <div class="row"><label for="sBd">誕生日</label><input type="date" id="sBd"><p class="note" style="margin:8px 0 0">変えると開封日も変わります。</p></div>
+    <div class="row"><label for="sName">呼び名（受け取る画面に出ます）</label><input id="sName" maxlength="20" placeholder="きみ"></div>
+    <div class="row"><label for="sTz">標準時間</label><select id="sTz"></select><p class="note" style="margin:8px 0 0">開封日の0時をどの国の時間で数えるか。</p></div>
+    <p class="err" id="sErr"></p>
+    <button class="btn full" id="sSave">保存する</button>
+  </div>
+  <div><h2>差出人の名前</h2><p class="sub">手紙の「〇〇より」に入ります。このスマホだけの設定です。</p></div>
+  <div class="form"><div class="row" style="margin-bottom:14px"><input id="sWho" maxlength="20" aria-label="差出人の名前"></div>
+   <label class="chk"><input type="checkbox" id="sWhoAll" checked> これまでの手紙の差出人もまとめて変える</label>
+   <button class="btn full" id="sWhoSave" style="margin-top:16px">差出人を変える</button></div>
+  <div><h2>受け取る側の画面</h2><p class="sub">送付したリンクを開くと、この画面が出ます。</p></div>
+  <div class="form"><button class="btn ghost full" id="sPreview">受け取る側の画面を見る</button></div>
+</div></div></section>
+</main>
+</div>
+
+<!-- ======== 受け取る側 ======== -->
+<section id="gift" hidden>
+<header><div class="wrap bar"><span class="mark">Voice Letters</span><button class="linkbtn" id="gBack" hidden>← 登録画面に戻る</button></div></header>
+<div class="wrap">
+  <div class="catch">
+    <h1 id="gTitle"></h1>
+    <p class="sub" id="gSub"></p>
+    <div class="count" id="gCount"></div>
+    <div class="clock" id="gClock"></div>
+    <div id="gCta" style="margin-top:26px"></div>
+    <p class="note" id="gNote" style="margin-top:12px"></p>
+  </div>
+  <div class="glist" id="gList"></div>
+</div>
+</section>
+
+<div class="ov" id="ov" hidden><div class="sheet" role="dialog" aria-modal="true"><button class="x" id="close">閉じる</button><div id="sheet"></div></div></div>
+
+<script>
+{
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const mmss=s=>{s=Math.max(0,Math.round(s||0));return `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`};
+const p2=n=>String(n).padStart(2,'0');
+/* 本物っぽいロウの封蝋（num が空なら印なし） */
+const WAX_BEADS='<circle cx="73.60" cy="50.00" r="1.15"/><circle cx="73.01" cy="55.25" r="1.15"/><circle cx="71.26" cy="60.24" r="1.15"/><circle cx="68.45" cy="64.71" r="1.15"/><circle cx="64.71" cy="68.45" r="1.15"/><circle cx="60.24" cy="71.26" r="1.15"/><circle cx="55.25" cy="73.01" r="1.15"/><circle cx="50.00" cy="73.60" r="1.15"/><circle cx="44.75" cy="73.01" r="1.15"/><circle cx="39.76" cy="71.26" r="1.15"/><circle cx="35.29" cy="68.45" r="1.15"/><circle cx="31.55" cy="64.71" r="1.15"/><circle cx="28.74" cy="60.24" r="1.15"/><circle cx="26.99" cy="55.25" r="1.15"/><circle cx="26.40" cy="50.00" r="1.15"/><circle cx="26.99" cy="44.75" r="1.15"/><circle cx="28.74" cy="39.76" r="1.15"/><circle cx="31.55" cy="35.29" r="1.15"/><circle cx="35.29" cy="31.55" r="1.15"/><circle cx="39.76" cy="28.74" r="1.15"/><circle cx="44.75" cy="26.99" r="1.15"/><circle cx="50.00" cy="26.40" r="1.15"/><circle cx="55.25" cy="26.99" r="1.15"/><circle cx="60.24" cy="28.74" r="1.15"/><circle cx="64.71" cy="31.55" r="1.15"/><circle cx="68.45" cy="35.29" r="1.15"/><circle cx="71.26" cy="39.76" r="1.15"/><circle cx="73.01" cy="44.75" r="1.15"/>';
+/* 高さの地図（明るいほど高い）を描いて、光を当ててロウの立体にする */
+/* イラスト調のロウ（平面の色を重ねるだけ） */
+const waxInner=n=>`<path d="M91.4 50.0 L91.2 51.4 L90.7 52.8 L90.0 54.2 L89.2 55.5 L88.1 56.7 L87.1 57.9 L86.0 59.0 L84.9 60.0 L84.0 61.0 L83.2 62.1 L82.6 63.2 L82.2 64.3 L82.0 65.6 L81.9 67.0 L81.8 68.4 L81.8 69.9 L81.7 71.4 L81.5 72.9 L81.1 74.3 L80.4 75.5 L79.6 76.7 L78.5 77.6 L77.3 78.3 L75.9 78.8 L74.5 79.1 L73.0 79.4 L71.5 79.5 L70.0 79.7 L68.7 79.9 L67.4 80.2 L66.3 80.6 L65.2 81.1 L64.2 81.8 L63.2 82.6 L62.2 83.4 L61.2 84.3 L60.1 85.2 L59.0 86.0 L57.8 86.8 L56.6 87.4 L55.3 87.8 L54.0 88.1 L52.7 88.2 L51.3 88.2 L50.0 88.0 L48.7 87.7 L47.4 87.3 L46.1 86.9 L44.9 86.4 L43.7 85.9 L42.5 85.4 L41.3 84.9 L40.1 84.4 L39.0 84.0 L37.8 83.6 L36.5 83.4 L35.2 83.2 L33.9 83.1 L32.4 83.0 L30.9 83.0 L29.4 83.0 L27.8 82.9 L26.2 82.7 L24.7 82.4 L23.3 81.9 L21.9 81.2 L20.8 80.2 L19.9 79.1 L19.2 77.8 L18.7 76.3 L18.4 74.7 L18.4 73.0 L18.4 71.3 L18.5 69.7 L18.6 68.1 L18.6 66.7 L18.5 65.4 L18.2 64.1 L17.8 63.0 L17.1 62.0 L16.3 60.9 L15.4 59.9 L14.5 58.9 L13.6 57.7 L12.9 56.5 L12.3 55.3 L11.9 54.0 L11.7 52.7 L11.8 51.3 L12.1 50.0 L12.6 48.7 L13.2 47.4 L13.9 46.2 L14.6 45.0 L15.3 43.9 L15.9 42.7 L16.3 41.6 L16.7 40.4 L16.9 39.2 L17.1 38.0 L17.1 36.7 L17.2 35.4 L17.2 34.0 L17.3 32.6 L17.4 31.2 L17.6 29.8 L17.9 28.4 L18.4 27.0 L18.9 25.7 L19.6 24.5 L20.4 23.4 L21.4 22.4 L22.5 21.5 L23.6 20.7 L24.9 20.1 L26.2 19.6 L27.6 19.2 L29.0 18.9 L30.4 18.6 L31.8 18.4 L33.1 18.1 L34.3 17.8 L35.5 17.4 L36.6 16.8 L37.7 16.1 L38.7 15.3 L39.8 14.3 L40.8 13.2 L41.9 12.1 L43.1 11.0 L44.4 10.1 L45.7 9.4 L47.1 8.9 L48.6 8.6 L50.0 8.8 L51.4 9.2 L52.8 9.9 L54.1 10.8 L55.4 11.9 L56.5 13.0 L57.6 14.2 L58.7 15.2 L59.7 16.2 L60.8 16.9 L61.8 17.5 L63.0 17.9 L64.2 18.1 L65.5 18.3 L66.8 18.4 L68.2 18.5 L69.5 18.8 L70.8 19.1 L72.1 19.6 L73.3 20.2 L74.3 21.1 L75.2 22.0 L76.0 23.1 L76.6 24.3 L77.2 25.5 L77.7 26.7 L78.2 27.9 L78.7 29.1 L79.2 30.3 L79.8 31.4 L80.4 32.5 L81.1 33.5 L81.8 34.5 L82.6 35.5 L83.5 36.5 L84.4 37.5 L85.4 38.5 L86.4 39.6 L87.3 40.7 L88.3 41.9 L89.2 43.1 L90.0 44.4 L90.6 45.7 L91.1 47.1 L91.3 48.6Z" fill="#7a1411" transform="translate(1.3 1.8)"/><path d="M91.4 50.0 L91.2 51.4 L90.7 52.8 L90.0 54.2 L89.2 55.5 L88.1 56.7 L87.1 57.9 L86.0 59.0 L84.9 60.0 L84.0 61.0 L83.2 62.1 L82.6 63.2 L82.2 64.3 L82.0 65.6 L81.9 67.0 L81.8 68.4 L81.8 69.9 L81.7 71.4 L81.5 72.9 L81.1 74.3 L80.4 75.5 L79.6 76.7 L78.5 77.6 L77.3 78.3 L75.9 78.8 L74.5 79.1 L73.0 79.4 L71.5 79.5 L70.0 79.7 L68.7 79.9 L67.4 80.2 L66.3 80.6 L65.2 81.1 L64.2 81.8 L63.2 82.6 L62.2 83.4 L61.2 84.3 L60.1 85.2 L59.0 86.0 L57.8 86.8 L56.6 87.4 L55.3 87.8 L54.0 88.1 L52.7 88.2 L51.3 88.2 L50.0 88.0 L48.7 87.7 L47.4 87.3 L46.1 86.9 L44.9 86.4 L43.7 85.9 L42.5 85.4 L41.3 84.9 L40.1 84.4 L39.0 84.0 L37.8 83.6 L36.5 83.4 L35.2 83.2 L33.9 83.1 L32.4 83.0 L30.9 83.0 L29.4 83.0 L27.8 82.9 L26.2 82.7 L24.7 82.4 L23.3 81.9 L21.9 81.2 L20.8 80.2 L19.9 79.1 L19.2 77.8 L18.7 76.3 L18.4 74.7 L18.4 73.0 L18.4 71.3 L18.5 69.7 L18.6 68.1 L18.6 66.7 L18.5 65.4 L18.2 64.1 L17.8 63.0 L17.1 62.0 L16.3 60.9 L15.4 59.9 L14.5 58.9 L13.6 57.7 L12.9 56.5 L12.3 55.3 L11.9 54.0 L11.7 52.7 L11.8 51.3 L12.1 50.0 L12.6 48.7 L13.2 47.4 L13.9 46.2 L14.6 45.0 L15.3 43.9 L15.9 42.7 L16.3 41.6 L16.7 40.4 L16.9 39.2 L17.1 38.0 L17.1 36.7 L17.2 35.4 L17.2 34.0 L17.3 32.6 L17.4 31.2 L17.6 29.8 L17.9 28.4 L18.4 27.0 L18.9 25.7 L19.6 24.5 L20.4 23.4 L21.4 22.4 L22.5 21.5 L23.6 20.7 L24.9 20.1 L26.2 19.6 L27.6 19.2 L29.0 18.9 L30.4 18.6 L31.8 18.4 L33.1 18.1 L34.3 17.8 L35.5 17.4 L36.6 16.8 L37.7 16.1 L38.7 15.3 L39.8 14.3 L40.8 13.2 L41.9 12.1 L43.1 11.0 L44.4 10.1 L45.7 9.4 L47.1 8.9 L48.6 8.6 L50.0 8.8 L51.4 9.2 L52.8 9.9 L54.1 10.8 L55.4 11.9 L56.5 13.0 L57.6 14.2 L58.7 15.2 L59.7 16.2 L60.8 16.9 L61.8 17.5 L63.0 17.9 L64.2 18.1 L65.5 18.3 L66.8 18.4 L68.2 18.5 L69.5 18.8 L70.8 19.1 L72.1 19.6 L73.3 20.2 L74.3 21.1 L75.2 22.0 L76.0 23.1 L76.6 24.3 L77.2 25.5 L77.7 26.7 L78.2 27.9 L78.7 29.1 L79.2 30.3 L79.8 31.4 L80.4 32.5 L81.1 33.5 L81.8 34.5 L82.6 35.5 L83.5 36.5 L84.4 37.5 L85.4 38.5 L86.4 39.6 L87.3 40.7 L88.3 41.9 L89.2 43.1 L90.0 44.4 L90.6 45.7 L91.1 47.1 L91.3 48.6Z" fill="#cc4a3f" transform="translate(-.9 -1.2)"/><path d="M91.4 50.0 L91.2 51.4 L90.7 52.8 L90.0 54.2 L89.2 55.5 L88.1 56.7 L87.1 57.9 L86.0 59.0 L84.9 60.0 L84.0 61.0 L83.2 62.1 L82.6 63.2 L82.2 64.3 L82.0 65.6 L81.9 67.0 L81.8 68.4 L81.8 69.9 L81.7 71.4 L81.5 72.9 L81.1 74.3 L80.4 75.5 L79.6 76.7 L78.5 77.6 L77.3 78.3 L75.9 78.8 L74.5 79.1 L73.0 79.4 L71.5 79.5 L70.0 79.7 L68.7 79.9 L67.4 80.2 L66.3 80.6 L65.2 81.1 L64.2 81.8 L63.2 82.6 L62.2 83.4 L61.2 84.3 L60.1 85.2 L59.0 86.0 L57.8 86.8 L56.6 87.4 L55.3 87.8 L54.0 88.1 L52.7 88.2 L51.3 88.2 L50.0 88.0 L48.7 87.7 L47.4 87.3 L46.1 86.9 L44.9 86.4 L43.7 85.9 L42.5 85.4 L41.3 84.9 L40.1 84.4 L39.0 84.0 L37.8 83.6 L36.5 83.4 L35.2 83.2 L33.9 83.1 L32.4 83.0 L30.9 83.0 L29.4 83.0 L27.8 82.9 L26.2 82.7 L24.7 82.4 L23.3 81.9 L21.9 81.2 L20.8 80.2 L19.9 79.1 L19.2 77.8 L18.7 76.3 L18.4 74.7 L18.4 73.0 L18.4 71.3 L18.5 69.7 L18.6 68.1 L18.6 66.7 L18.5 65.4 L18.2 64.1 L17.8 63.0 L17.1 62.0 L16.3 60.9 L15.4 59.9 L14.5 58.9 L13.6 57.7 L12.9 56.5 L12.3 55.3 L11.9 54.0 L11.7 52.7 L11.8 51.3 L12.1 50.0 L12.6 48.7 L13.2 47.4 L13.9 46.2 L14.6 45.0 L15.3 43.9 L15.9 42.7 L16.3 41.6 L16.7 40.4 L16.9 39.2 L17.1 38.0 L17.1 36.7 L17.2 35.4 L17.2 34.0 L17.3 32.6 L17.4 31.2 L17.6 29.8 L17.9 28.4 L18.4 27.0 L18.9 25.7 L19.6 24.5 L20.4 23.4 L21.4 22.4 L22.5 21.5 L23.6 20.7 L24.9 20.1 L26.2 19.6 L27.6 19.2 L29.0 18.9 L30.4 18.6 L31.8 18.4 L33.1 18.1 L34.3 17.8 L35.5 17.4 L36.6 16.8 L37.7 16.1 L38.7 15.3 L39.8 14.3 L40.8 13.2 L41.9 12.1 L43.1 11.0 L44.4 10.1 L45.7 9.4 L47.1 8.9 L48.6 8.6 L50.0 8.8 L51.4 9.2 L52.8 9.9 L54.1 10.8 L55.4 11.9 L56.5 13.0 L57.6 14.2 L58.7 15.2 L59.7 16.2 L60.8 16.9 L61.8 17.5 L63.0 17.9 L64.2 18.1 L65.5 18.3 L66.8 18.4 L68.2 18.5 L69.5 18.8 L70.8 19.1 L72.1 19.6 L73.3 20.2 L74.3 21.1 L75.2 22.0 L76.0 23.1 L76.6 24.3 L77.2 25.5 L77.7 26.7 L78.2 27.9 L78.7 29.1 L79.2 30.3 L79.8 31.4 L80.4 32.5 L81.1 33.5 L81.8 34.5 L82.6 35.5 L83.5 36.5 L84.4 37.5 L85.4 38.5 L86.4 39.6 L87.3 40.7 L88.3 41.9 L89.2 43.1 L90.0 44.4 L90.6 45.7 L91.1 47.1 L91.3 48.6Z" fill="#ab241e"/><circle cx="50" cy="50" r="30.5" fill="#b8302a"/><path d="M23.6 65.2A30.5 30.5 0 0 1 65.2 23.6" fill="none" stroke="#d4574c" stroke-width="1.2" stroke-linecap="round"/><path d="M76.4 34.7A30.5 30.5 0 0 1 34.8 76.4" fill="none" stroke="#86170f" stroke-width="1.2" stroke-linecap="round" opacity=".7"/><circle cx="50" cy="50" r="25.5" fill="#981d18"/><path d="M24.9 54.4A25.5 25.5 0 0 1 58.7 26.0" fill="none" stroke="#6c100d" stroke-width="1.8" stroke-linecap="round" opacity=".8"/><path d="M75.1 45.6A25.5 25.5 0 0 1 45.6 75.1" fill="none" stroke="#d8645a" stroke-width="1.1" stroke-linecap="round" opacity=".7"/><circle cx="50" cy="50" r="22" fill="none" stroke="#c4433a" stroke-width=".6" opacity=".55"/><path d="M16.2 40.9A35 35 0 0 1 35.2 18.3" fill="none" stroke="#fff" stroke-opacity=".5" stroke-width="2.2" stroke-linecap="round"/><circle cx="19.5" cy="38" r="1.3" fill="#fff" opacity=".45"/>${n===''?'':`<text x="50.7" y="58.6" fill="#6a110e" text-anchor="middle" style="font:500 22px 'Shippori Mincho',serif">${n}</text><text x="50" y="57.8" fill="#f1c4bb" text-anchor="middle" style="font:500 22px 'Shippori Mincho',serif">${n}</text>`}`;
+/* 金色の封蝋スタンプ（横から見た形。下の面がロウの中心に来る） */
+const STAMP=`<circle class="sl" data-h="0" cx="50" cy="50" r="25.5" fill="#8a6420"/><circle class="sl" data-h="2" cx="50" cy="50" r="25.5" fill="#ab8229"/><circle class="sl" data-h="4" cx="50" cy="50" r="25.5" fill="#b3892d"/><circle class="sl" data-h="6" cx="50" cy="50" r="25.5" fill="#bc9030"/><circle class="sl" data-h="8" cx="50" cy="50" r="25.5" fill="#c49834"/><circle class="sl" data-h="10" cx="50" cy="50" r="25.5" fill="#cca038"/><circle class="sl" data-h="12" cx="50" cy="50" r="25.5" fill="#d4a73c"/><circle class="sl" data-h="14" cx="50" cy="50" r="25.5" fill="#f2d27a"/><circle class="sl" data-h="14" cx="50" cy="50" r="22.5" fill="#e3bd5a"/><circle class="sl" data-h="16" cx="50" cy="50" r="11.5" fill="#b88b2e"/><circle class="sl" data-h="18" cx="50" cy="50" r="11.5" fill="#bd9032"/><circle class="sl" data-h="20" cx="50" cy="50" r="13.5" fill="#f6dc8a"/><circle class="sl" data-h="22" cx="50" cy="50" r="11.5" fill="#c69b3a"/><circle class="sl" data-h="24" cx="50" cy="50" r="11.5" fill="#cba03e"/><circle class="sl" data-h="26" cx="50" cy="50" r="13.5" fill="#f6dc8a"/><circle class="sl" data-h="28" cx="50" cy="50" r="11.5" fill="#d4ab46"/><circle class="sl" data-h="30" cx="50" cy="50" r="11.5" fill="#d9b04a"/><circle class="sl" data-h="30" cx="50" cy="50" r="11.5" fill="#f2d27a"/><circle class="sl" data-h="32" cx="50" cy="50" r="9.0" fill="#3a1b0c"/><circle class="sl" data-h="34" cx="50" cy="50" r="8.8" fill="#3b1c0d"/><circle class="sl" data-h="36" cx="50" cy="50" r="8.6" fill="#3c1c0d"/><circle class="sl" data-h="38" cx="50" cy="50" r="8.4" fill="#3e1d0e"/><circle class="sl" data-h="40" cx="50" cy="50" r="8.1" fill="#3f1e0e"/><circle class="sl" data-h="42" cx="50" cy="50" r="7.9" fill="#401f0f"/><circle class="sl" data-h="44" cx="50" cy="50" r="7.7" fill="#411f0f"/><circle class="sl" data-h="46" cx="50" cy="50" r="7.5" fill="#432010"/><circle class="sl" data-h="48" cx="50" cy="50" r="8.0" fill="#442110"/><circle class="sl" data-h="50" cx="50" cy="50" r="8.5" fill="#452211"/><circle class="sl" data-h="52" cx="50" cy="50" r="9.0" fill="#462211"/><circle class="sl" data-h="54" cx="50" cy="50" r="9.5" fill="#482312"/><circle class="sl" data-h="56" cx="50" cy="50" r="10.0" fill="#492412"/><circle class="sl" data-h="58" cx="50" cy="50" r="10.5" fill="#4a2513"/><circle class="sl" data-h="60" cx="50" cy="50" r="10.9" fill="#4b2513"/><circle class="sl" data-h="62" cx="50" cy="50" r="11.3" fill="#4c2614"/><circle class="sl" data-h="64" cx="50" cy="50" r="11.7" fill="#4e2714"/><circle class="sl" data-h="66" cx="50" cy="50" r="12.1" fill="#4f2815"/><circle class="sl" data-h="68" cx="50" cy="50" r="12.4" fill="#502815"/><circle class="sl" data-h="70" cx="50" cy="50" r="12.8" fill="#512916"/><circle class="sl" data-h="72" cx="50" cy="50" r="13.0" fill="#532a16"/><circle class="sl" data-h="74" cx="50" cy="50" r="13.3" fill="#542b17"/><circle class="sl" data-h="76" cx="50" cy="50" r="13.5" fill="#552b17"/><circle class="sl" data-h="78" cx="50" cy="50" r="13.7" fill="#562c18"/><circle class="sl" data-h="80" cx="50" cy="50" r="13.8" fill="#582d18"/><circle class="sl" data-h="82" cx="50" cy="50" r="13.9" fill="#592e19"/><circle class="sl" data-h="84" cx="50" cy="50" r="14.0" fill="#5a2e19"/><circle class="sl" data-h="86" cx="50" cy="50" r="14.0" fill="#5b2f1a"/><circle class="sl" data-h="88" cx="50" cy="50" r="14.0" fill="#5c301a"/><circle class="sl" data-h="90" cx="50" cy="50" r="13.8" fill="#5e311b"/><circle class="sl" data-h="92" cx="50" cy="50" r="13.6" fill="#5f311b"/><circle class="sl" data-h="94" cx="50" cy="50" r="13.3" fill="#60321c"/><circle class="sl" data-h="96" cx="50" cy="50" r="12.8" fill="#61331c"/><circle class="sl" data-h="98" cx="50" cy="50" r="12.3" fill="#63341d"/><circle class="sl" data-h="100" cx="50" cy="50" r="11.6" fill="#64341d"/><circle class="sl" data-h="102" cx="50" cy="50" r="10.8" fill="#65351e"/><circle class="sl" data-h="104" cx="50" cy="50" r="9.7" fill="#66361e"/><circle class="sl" data-h="106" cx="50" cy="50" r="8.4" fill="#68371f"/><circle class="sl" data-h="108" cx="50" cy="50" r="6.6" fill="#69371f"/><circle class="sl" data-h="110" cx="50" cy="50" r="3.9" fill="#6a3820"/><circle class="sl" data-h="110" cx="47.5" cy="47.5" r="4.2" fill="#8a5232"/><path class="sl" data-h="110" d="M43.5 49A7 7 0 0 1 49 43.6" fill="none" stroke="#fff" stroke-opacity=".4" stroke-width="1.6" stroke-linecap="round"/>`;
+const STAMP_SHD='<ellipse cx="50" cy="50" rx="27" ry="27" fill="#2a0b08" opacity=".2"/>';
+/* スタンプは1つの立体（高さごとの輪切り）。上から見て、傾き＝輪切りのずれ。来て→まっすぐ立って→1秒押して→離れる */
+function stampRun(w,delay){(w._an||[]).forEach(a=>a.cancel());const D=3400,o={duration:D,delay:delay||0,fill:'both'},E='ease-in-out',q=s=>w.querySelector(s),an=[];
+ const K=(el,kf)=>an.push(el.animate(kf.map(k=>({easing:E,...k})),o));
+ K(q('.wb'),[{offset:0,opacity:0,transform:'scale(.35)'},{offset:.1,opacity:1,transform:'scale(1)'},{offset:.34,opacity:1,transform:'scale(1)'},{offset:.5,opacity:1,transform:'scale(1.07)'},{offset:.6,opacity:1,transform:'scale(1.07)'},{offset:.66,opacity:0,transform:'scale(1.07)'},{offset:1,opacity:0,transform:'scale(1.07)'}]);
+ K(q('.wi'),[{offset:0,opacity:0},{offset:.5,opacity:0},{offset:.62,opacity:1},{offset:1,opacity:1}]);
+ const P=[[0,200,70,1.3,0],[.07,176,62,1.3,1],[.24,40,14,1.2,1],[.34,0,0,1,1],[.37,0,0,.955,1],[.5,0,0,.965,1],[.53,0,0,.95,1],[.66,0,0,.955,1],[.74,6,2,1.15,1],[.93,176,62,1.3,1],[1,200,70,1.3,0]];
+ K(q('.wst'),P.map(([t,x,y,s,a])=>({offset:t,opacity:a,transform:`translate(${x}px,${y}px) scale(${s})`})));
+ K(q('.wsh'),P.map(([t,x,y,s,a])=>({offset:t,opacity:a,transform:`translate(${x+(s-.95)*60}px,${y+(s-.95)*75}px) scale(${s})`})));
+ const T=[[0,.8],[.24,.8],[.34,0],[.66,0],[.74,.5],[1,.8]];
+ w.querySelectorAll('.sl').forEach(c=>{const h=+c.dataset.h;K(c,T.map(([t,v])=>({offset:t,transform:`translate(${(v*h*.8).toFixed(1)}px,${(v*h*.42).toFixed(1)}px)`})))});
+ w._an=an}
+const waxBlob=()=>'<circle cx="51.2" cy="51.6" r="35" fill="#7a1411"/><circle cx="49.2" cy="49" r="35" fill="#cc4a3f"/><circle cx="50" cy="50" r="34.6" fill="#ab241e"/><path d="M21.0 42.2A30 30 0 0 1 37.3 22.8" fill="none" stroke="#fff" stroke-opacity=".45" stroke-width="2.4" stroke-linecap="round"/>';
+const waxGold=h=>{const m={'#7a1411':'#7a5718','#cc4a3f':'#f6dc8a','#ab241e':'#d4a73c','#b8302a':'#dcb550','#d4574c':'#f8e6a8','#86170f':'#8a6420','#981d18':'#c0912f','#6c100d':'#7a5718','#d8645a':'#f6dc8a','#c4433a':'#f2d27a','#6a110e':'#6b4a12','#f1c4bb':'#fff6d8'};return h.replace(/#[0-9a-f]{6}/g,c=>m[c]||c)};
+/* 開封の年（18歳）だけは金のシーリング */
+const isGold=n=>n!==''&&+n===((typeof S!=='undefined'&&S||typeof G!=='undefined'&&G||{}).openAge);
+const waxSvg=n=>`<svg class="wsv" viewBox="0 0 100 100" aria-hidden="true">${isGold(n)?waxGold(waxInner(n)):waxInner(n)}</svg>`;
+const LIVE=typeof google!=='undefined'&&google.script&&google.script.run;
+const HOLD_MS=8000;
+const store={get(k){try{return localStorage.getItem(k)}catch(e){return null}},set(k,v){try{localStorage.setItem(k,v)}catch(e){}}};
+const TZS=[['Asia/Tokyo','日本（東京）'],['Asia/Seoul','韓国（ソウル）'],['Asia/Shanghai','中国（上海）'],['Asia/Taipei','台湾（台北）'],['Asia/Singapore','シンガポール'],['Asia/Bangkok','タイ（バンコク）'],['Australia/Sydney','オーストラリア（シドニー）'],['Europe/London','イギリス（ロンドン）'],['Europe/Paris','フランス（パリ）'],['Europe/Berlin','ドイツ（ベルリン）'],['America/New_York','アメリカ東部（ニューヨーク）'],['America/Chicago','アメリカ中部（シカゴ）'],['America/Los_Angeles','アメリカ西部（ロサンゼルス）'],['Pacific/Honolulu','ハワイ'],['UTC','協定世界時（UTC）']];
+let role=store.get('vl-role'),TZ='Asia/Tokyo';
+
+/* ---- 日付（設定した標準時間で数える） ---- */
+const parts=d=>{const o={};new Intl.DateTimeFormat('en-US',{timeZone:TZ,year:'numeric',month:'numeric',day:'numeric'}).formatToParts(new Date(d)).forEach(p=>{if(p.type!=='literal')o[p.type]=+p.value});return o};
+const fmtD=d=>{const p=parts(d);return `${p.year}.${p.month}.${p.day}`};
+const fmtJ=d=>{const p=parts(d);return `${p.year}年${p.month}月${p.day}日`};
+
+/* ---- intro ---- */
+document.querySelectorAll('[data-wax]').forEach(s=>s.innerHTML=waxInner(s.dataset.wax));
+let intro=$('#intro');
+{let h='';for(let i=0;i<40;i++){const v=Math.abs(Math.sin(i*.41)*Math.sin(i*.13+1.2))*.85+.15,bh=4+v*40;h+=`<rect x="${(132+i*6.4).toFixed(1)}" y="${(262-bh/2).toFixed(1)}" width="2.6" height="${bh.toFixed(1)}" rx="1.3"/>`}$('#iw').innerHTML=h}
+let introDone=false,loaded=false;const introTpl=intro.cloneNode(true);
+const RM=matchMedia('(prefers-reduced-motion:reduce)').matches;
+const endIntro=()=>{if(introDone)return;introDone=true;intro.classList.add('out');setTimeout(()=>intro.remove(),750);route()};
+/* 登録する側：自動で開く。受け取る側：触ったら開く */
+function startIntro(){
+ if(MODE==='gift'){intro.classList.add('gift');$('#introMsg').hidden=false;$('#introSkip').textContent='封筒をタップして開ける';
+  intro.addEventListener('click',()=>{if(intro.classList.contains('go'))return;intro.classList.add('go');$('#introSkip').textContent='';setTimeout(endIntro,RM?300:2900)});return}
+ intro.classList.add('auto');$('#introSkip').textContent='タップでスキップ';intro.addEventListener('click',endIntro);setTimeout(endIntro,RM?500:3300)}
+
+/* ---- プレビュー用サンプル（Apps Script上では使われません） ---- */
+const demo=[
+ {id:'s1',age:1,author:'パパ',createdAt:'2024-06-14T10:00:00+09:00',seconds:132},
+ {id:'s2',age:2,author:'パパ',createdAt:'2025-06-14T10:00:00+09:00',seconds:158},
+ {id:'s3',age:2,author:'ママ',createdAt:'2025-06-15T10:00:00+09:00',seconds:96},
+ {id:'s4',age:3,author:'パパ',createdAt:'2026-06-14T10:00:00+09:00',seconds:201}];
+let demoUnlock=false;
+const D={st:{name:'',birthday:'',tz:'Asia/Tokyo',openAge:18,openAt:null,phrase:'まだ早いけど、開けます',openLog:[],sentAt:null,giftUrl:'https://script.google.com/macros/s/（あなたのURL）/exec?view=gift&k=xxxx'},
+ meta:l=>({id:l.id,age:l.age,author:l.author,createdAt:l.createdAt,seconds:l.seconds,hasVoice:true,hasPhoto:!!l.photo}),
+ pub(){return{...this.st,letters:this.st.birthday?demo.map(this.meta):[]}},
+ getState(){return this.pub()},
+ setSettings(s){Object.assign(this.st,s);if(this.st.birthday){const[y,m,d]=this.st.birthday.split('-');this.st.openAt=`${+y+18}-${m}-${d}T00:00:00+09:00`}return this.pub()},
+ setBirthday(s){return this.setSettings({birthday:s})},
+ markSent(){this.st.sentAt=new Date().toISOString();return this.pub()},
+ saveLetter(p){demo.push({id:'n'+Date.now(),age:+p.age,author:p.author,createdAt:new Date().toISOString(),seconds:p.seconds,voice:`data:${p.voice.mime};base64,${p.voice.b64}`,photo:p.photo&&`data:${p.photo.mime};base64,${p.photo.b64}`});return this.pub()},
+ replaceVoice(id,p){const l=demo.find(x=>x.id===id);l.voice=`data:${p.voice.mime};base64,${p.voice.b64}`;l.seconds=p.seconds;return this.pub()},
+ renameAuthor(o,n){demo.forEach(l=>{if(l.author===o)l.author=n});return this.pub()},
+ deleteLetter(id){demo.splice(demo.findIndex(x=>x.id===id),1);return this.pub()},
+ openLetter(id){const l=demo.find(x=>x.id===id),early=new Date()<new Date(this.st.openAt);
+  return{id,age:l.age,author:l.author,createdAt:l.createdAt,early,voice:l.voice,photo:l.photo,sample:!l.voice}},
+ giftState(){const opened=demoUnlock||new Date()>=new Date(this.st.openAt);
+  return{name:this.st.name,tz:this.st.tz,openAge:18,openAt:this.st.openAt,opened,count:demo.length,letters:opened?demo.map(this.meta).sort((a,b)=>a.age-b.age):[]}},
+ giftOpen(k,id){const l=demo.find(x=>x.id===id);return{id,age:l.age,author:l.author,createdAt:l.createdAt,voice:l.voice,photo:l.photo,sample:!l.voice}}};
+/* ---- 共有版（GitHub Pages）：ログインした人のGoogleドライブに保存 ---- */
+const WEB=!LIVE&&/github\.io$/.test(location.hostname);
+const CFG={cid:'737250624512-4k1i10879qjoo0uut3695964hbhji1h1.apps.googleusercontent.com',key:'AIzaSyCEroLkaWBDEzafTIzfc0S3sMcZCn5_-r8',scope:'https://www.googleapis.com/auth/drive.file',folder:'Voice Letters（18歳まで開けない）'};
+const GA='https://www.googleapis.com/';
+const tzOff=(t,tz)=>{const p={};new Intl.DateTimeFormat('en-US',{timeZone:tz,hourCycle:'h23',year:'numeric',month:'numeric',day:'numeric',hour:'numeric',minute:'numeric',second:'numeric'}).formatToParts(new Date(t)).forEach(x=>{if(x.type!=='literal')p[x.type]=+x.value});return Date.UTC(p.year,p.month-1,p.day,p.hour,p.minute,p.second)-t};
+const W={tok:'',fid:'',iid:'',pub:null,urls:{},
+ async api(path,opt={}){
+  const r=await fetch(GA+path,{...opt,headers:{Authorization:'Bearer '+this.tok,...(opt.headers||{})}});
+  if(r.status===401){this.tok='';try{sessionStorage.removeItem('vl-tok')}catch(e){}loginScreen('時間が経ったので、もう一度ログインしてください');throw new Error('もう一度ログインしてください')}
+  if(!r.ok){let m=r.status;try{m=(await r.json()).error.message||m}catch(e){}throw new Error('保存先とのやりとりに失敗しました（'+m+'）')}
+  return opt.raw?r:(r.status===204?{}:r.json())},
+ json(path,method,body){return this.api(path,{method,headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})},
+ list(q,f){return this.api('drive/v3/files?q='+encodeURIComponent(q)+'&fields='+encodeURIComponent('files('+(f||'id')+')')).then(j=>j.files||[])},
+ upload(meta,blob){const fd=new FormData();fd.append('metadata',new Blob([JSON.stringify(meta)],{type:'application/json'}));fd.append('file',blob);
+  return this.api('upload/drive/v3/files?uploadType=multipart&fields=id',{method:'POST',body:fd})},
+ async init(){
+  let f=store.get('vl-folder');
+  if(f){try{const j=await this.api('drive/v3/files/'+f+'?fields=id,trashed');if(j.trashed)f=''}catch(e){if(!this.tok)throw e;f=''}}
+  if(!f){const a=await this.list("mimeType='application/vnd.google-apps.folder' and appProperties has { key='vl' and value='root' } and trashed=false");
+   f=a[0]?a[0].id:(await this.json('drive/v3/files?fields=id','POST',{name:CFG.folder,mimeType:'application/vnd.google-apps.folder',appProperties:{vl:'root'}})).id}
+  this.fid=f;store.set('vl-folder',f);
+  const a=await this.list(`'${f}' in parents and name='letters.json' and trashed=false`);
+  this.iid=a[0]?a[0].id:(await this.upload({name:'letters.json',parents:[f],mimeType:'application/json'},new Blob(['{}'],{type:'application/json'}))).id},
+ async load(){const r=await this.api('drive/v3/files/'+this.iid+'?alt=media',{raw:true});let d={};try{d=JSON.parse(await r.text()||'{}')}catch(e){}d.letters=d.letters||[];return d},
+ save(d){return this.api('upload/drive/v3/files/'+this.iid+'?uploadType=media',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(d,null,1)})},
+ meta:l=>({id:l.id,age:l.age,author:l.author,createdAt:l.createdAt,seconds:l.seconds||0,hasVoice:!!l.voiceId,hasPhoto:!!l.photoId}),
+ openAt(d){if(!d.birthday)return null;const[y,m,dd]=d.birthday.split('-').map(Number),u=Date.UTC(y+18,m-1,dd);return new Date(u-tzOff(u,d.tz||'Asia/Tokyo')).toISOString()},
+ st(d){return{name:d.name||'',birthday:d.birthday||'',tz:d.tz||'Asia/Tokyo',openAge:18,openAt:this.openAt(d),letters:d.letters.map(this.meta),sentAt:d.sentAt||null,giftUrl:location.origin+location.pathname+'?k='+this.iid}},
+ blob(m){const s=atob(m.b64),u=new Uint8Array(s.length);for(let i=0;i<s.length;i++)u[i]=s.charCodeAt(i);return new Blob([u],{type:String(m.mime||'application/octet-stream').split(';')[0]})},
+ put(m,base,parent){const b=this.blob(m),ext={'audio/mp4':'m4a','audio/x-m4a':'m4a','audio/mpeg':'mp3','audio/webm':'webm','audio/wav':'wav','image/jpeg':'jpg','image/png':'png'}[b.type]||b.type.split('/')[1]||'bin';
+  return this.upload({name:base+'.'+ext,parents:[parent],mimeType:b.type},b).then(j=>j.id)},
+ async media(id,pub){if(this.urls[id])return this.urls[id];
+  const r=pub?await fetch(GA+'drive/v3/files/'+id+'?alt=media&key='+CFG.key):await this.api('drive/v3/files/'+id+'?alt=media',{raw:true});
+  if(!r.ok)throw new Error('声を読み込めませんでした');return this.urls[id]=URL.createObjectURL(await r.blob())},
+ async getState(){return this.st(await this.load())},
+ async setSettings(s){const d=await this.load();
+  if(s.birthday!==undefined){if(!/^\d{4}-\d{2}-\d{2}$/.test(String(s.birthday)))throw new Error('誕生日の形式が正しくありません');d.birthday=String(s.birthday)}
+  if(s.name!==undefined)d.name=String(s.name).slice(0,20);if(s.tz!==undefined)d.tz=String(s.tz);
+  await this.save(d);return this.st(d)},
+ setBirthday(s){return this.setSettings({birthday:s})},
+ /* 届けるとき：リンクを知っている人が聴けるようにフォルダを公開にする */
+ async markSent(){await this.json('drive/v3/files/'+this.fid+'/permissions','POST',{type:'anyone',role:'reader'});
+  const d=await this.load();d.sentAt=new Date().toISOString();await this.save(d);return this.st(d)},
+ async saveLetter(p){const d=await this.load();if(!d.birthday)throw new Error('先に誕生日を登録してください');
+  const age=Number(p.age),author=String(p.author||'').slice(0,20)||'だれか',t=parts(new Date()),pad=n=>String(n).padStart(2,'0');
+  const sub=(await this.json('drive/v3/files?fields=id','POST',{name:`${age}歳 - ${author} - ${t.year}-${pad(t.month)}-${pad(t.day)}`,mimeType:'application/vnd.google-apps.folder',parents:[this.fid]})).id;
+  const l={id:(crypto.randomUUID?crypto.randomUUID():'l'+Date.now()+Math.random().toString(36).slice(2)),age,author,seconds:Number(p.seconds)||0,createdAt:new Date().toISOString(),folderId:sub};
+  if(p.voice)l.voiceId=await this.put(p.voice,'voice',sub);
+  if(p.photo)l.photoId=await this.put(p.photo,'photo',sub);
+  const d2=await this.load();d2.letters.push(l);await this.save(d2);return this.st(d2)},
+ async replaceVoice(id,p){let d=await this.load(),l=d.letters.find(x=>x.id===id);if(!l)throw new Error('手紙が見つかりません');
+  const old=l.voiceId,nid=await this.put(p.voice,'voice',l.folderId);
+  d=await this.load();l=d.letters.find(x=>x.id===id);l.voiceId=nid;l.seconds=Number(p.seconds)||0;l.updatedAt=new Date().toISOString();await this.save(d);
+  if(old)this.json('drive/v3/files/'+old,'PATCH',{trashed:true}).catch(()=>{});return this.st(d)},
+ async renameAuthor(o,n){n=String(n||'').slice(0,20);if(!n)throw new Error('名前を入れてください');
+  const d=await this.load();d.letters.forEach(l=>{if(l.author===o)l.author=n});await this.save(d);return this.st(d)},
+ async deleteLetter(id){const d=await this.load(),l=d.letters.find(x=>x.id===id);if(!l)throw new Error('手紙が見つかりません');
+  d.letters=d.letters.filter(x=>x.id!==id);await this.save(d);this.json('drive/v3/files/'+l.folderId,'PATCH',{trashed:true}).catch(()=>{});return this.st(d)},
+ async openLetter(id){const d=await this.load(),l=d.letters.find(x=>x.id===id);if(!l)throw new Error('手紙が見つかりません');
+  const out={id,age:l.age,author:l.author,createdAt:l.createdAt,early:new Date()<new Date(this.openAt(d))};
+  if(l.voiceId)out.voice=await this.media(l.voiceId);if(l.photoId)out.photo=await this.media(l.photoId);return out},
+ async giftState(k){let d;
+  if(this.tok&&this.iid)d=await this.load();
+  else{const r=await fetch(GA+'drive/v3/files/'+encodeURIComponent(k)+'?alt=media&key='+CFG.key);
+   if(!r.ok)throw new Error('この手紙は、まだ届いていません。');d=await r.json();d.letters=d.letters||[]}
+  this.pub=d;const o=this.openAt(d),opened=!!o&&new Date()>=new Date(o);
+  return{name:d.name||'',tz:d.tz||'Asia/Tokyo',openAge:18,openAt:o,opened,count:d.letters.length,
+   letters:opened?d.letters.map(this.meta).sort((a,b)=>a.age-b.age||a.createdAt.localeCompare(b.createdAt)):[]}},
+ async giftOpen(k,id){const d=this.pub||{letters:[]},o=this.openAt(d);if(!o||new Date()<new Date(o))throw new Error('まだ開けられません');
+  const l=d.letters.find(x=>x.id===id);if(!l)throw new Error('手紙が見つかりません');
+  const pub=!this.tok,out={id,age:l.age,author:l.author,createdAt:l.createdAt};
+  if(l.voiceId)out.voice=await this.media(l.voiceId,pub);if(l.photoId)out.photo=await this.media(l.photoId,pub);return out}};
+/* ログイン画面 */
+let tokenClient=null;
+function loginScreen(msg){let e=$('#login');
+ if(!e){e=document.createElement('div');e.id='login';e.style.cssText='position:fixed;inset:0;z-index:99;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:28px;text-align:center';
+  e.innerHTML='<h1 style="font-size:22px;margin:0;font-weight:500">Voice Letters</h1><p style="margin:0;color:var(--mute);font-size:14px;max-width:300px">声は、あなた自身の<br>Googleドライブに保存されます。</p><button class="btn" id="loginBtn">Googleでログイン</button><p id="loginMsg" style="margin:0;color:var(--warn);font-size:13px;min-height:1.7em"></p>';
+  document.body.append(e);
+  $('#loginBtn').addEventListener('click',()=>{
+   if(!window.google||!google.accounts){$('#loginMsg').textContent='読み込み中です。少し待ってもう一度押してください。';return}
+   if(!tokenClient)tokenClient=google.accounts.oauth2.initTokenClient({client_id:CFG.cid,scope:CFG.scope,callback:r=>{
+    if(r.error||!r.access_token){$('#loginMsg').textContent='ログインできませんでした。もう一度お試しください。';return}
+    if(!String(r.scope||'').includes('drive.file')){$('#loginMsg').textContent='保存の許可にチェックを入れて、もう一度お試しください。';return}
+    W.tok=r.access_token;try{sessionStorage.setItem('vl-tok',JSON.stringify({t:r.access_token,e:Date.now()+(+r.expires_in-120)*1000}))}catch(e){}
+    const first=!S;$('#login').remove();if(first)webStart()}});
+   tokenClient.requestAccessToken()})}
+ $('#loginMsg').textContent=msg||''}
+function webStart(){W.init().then(load).catch(e=>{loaded=true;if($('#login'))return;document.body.insertAdjacentHTML('beforeend',`<p class="err" style="text-align:center;padding:40px 20px">${esc(e.message||e)}</p>`)})}
+function webBoot(){const k=new URLSearchParams(location.search).get('k');
+ if(k){MODE='gift';GKEY=k;load();return}
+ const s=document.createElement('script');s.src='https://accounts.google.com/gsi/client';s.async=true;document.head.append(s);
+ try{const j=JSON.parse(sessionStorage.getItem('vl-tok')||'null');if(j&&j.e>Date.now())W.tok=j.t}catch(e){}
+ if(W.tok)webStart();else loginScreen()}
+const call=(fn,...a)=>LIVE?new Promise((ok,ng)=>google.script.run.withSuccessHandler(ok).withFailureHandler(ng)[fn](...a))
+ :WEB?W[fn](...a):new Promise((ok,ng)=>setTimeout(()=>{try{ok(D[fn](...a))}catch(e){ng(e)}},300));
+
+let S=null,G=null,MODE='parent',GKEY='',fromParent=false;
+const bd=()=>S.birthday.split('-').map(Number);
+const bdayD=a=>{const[y,m,d]=bd();return `${y+a}.${m}.${d}`};
+const bdayJ=a=>{const[y,m,d]=bd();return `${y+a}年${m}月${d}日`};
+const ageNow=()=>{const[y,m,d]=bd(),t=parts(new Date());let a=t.year-y;if(t.month<m||(t.month===m&&t.day<d))a--;return Math.max(0,a)};
+const has=(a,who)=>S.letters.some(l=>l.age===a&&(!who||l.author===who));
+/* 今年の手紙＝直近の誕生日。自分がもう入れていれば次の誕生日 */
+const targetAge=()=>{const a=ageNow();return Math.min(S.openAge,has(a,role)?a+1:a)};
+const ageLabel=a=>a===0?'生まれた日':a+'歳の誕生日';
+const toName=n=>n||'きみ';
+const toast=t=>{const e=document.createElement('div');e.className='toast';e.textContent=t;document.body.append(e);setTimeout(()=>e.remove(),2800)};
+
+/* ---- 起動と画面の切り替え ---- */
+function boot(){
+ if(WEB){webBoot();return}
+ if(LIVE&&google.script.url)google.script.url.getLocation(loc=>{const p=loc.parameter||{};if(p.view==='gift'){MODE='gift';GKEY=p.k||''}load()});
+ else{if(location.hash==='#gift'){MODE='gift';GKEY='demo'}load()}}
+function load(){if(MODE!=='gift')startIntro();
+ (MODE==='gift'?call('giftState',GKEY).then(g=>{G=g;TZ=g.tz||TZ;const n=toName(g.name);$('#introTo').textContent=`${n}へ`;startIntro()}):call('getState').then(s=>{S=s;TZ=s.tz||TZ}))
+ .then(()=>{loaded=true;route()}).catch(e=>{loaded=true;document.body.insertAdjacentHTML('beforeend',`<p class="err" style="text-align:center;padding:40px 20px">${esc(e.message||e)}</p>`)})}
+function route(){if(!introDone||!loaded)return;
+ if(MODE==='gift'){$('#setup').hidden=true;$('#app').hidden=true;$('#gift').hidden=false;renderGift();scrollTo(0,0);return}
+ $('#gift').hidden=true;
+ const ready=S.birthday&&role;$('#setup').hidden=!!ready;$('#app').hidden=!ready;
+ if(ready){render();compose($('#form'),targetAge())}else setup()}
+function tab(name){document.querySelectorAll('[data-tab]').forEach(b=>b.setAttribute('aria-selected',b.dataset.tab===name));
+ ['write','sent','settings'].forEach(n=>$('#p-'+n).hidden=n!==name);if(name==='settings')fillSettings();scrollTo(0,0)}
+document.querySelector('.tabs').addEventListener('click',e=>{const b=e.target.closest('[data-tab]');if(b){if(b.dataset.tab!=='write')stopRec(true);tab(b.dataset.tab)}});
+
+/* ---- はじめに ---- */
+function setup(){
+ $('#bdRow').hidden=!!S.birthday;$('#nmRow').hidden=!!S.birthday;$('#bdSet').hidden=!S.birthday;
+ if(S.birthday)$('#bdSet').textContent=`${S.name?S.name+'・':''}誕生日 ${bdayJ(0)}（登録済み）`;
+ $('#roleSeg').querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.v===pick));
+}
+let pick=role==='パパ'||role==='ママ'?role:'';
+$('#roleSeg').addEventListener('click',e=>{const b=e.target.closest('button');if(b){pick=b.dataset.v;setup()}});
+$('#startBtn').addEventListener('click',async()=>{
+ const err=$('#setErr');err.textContent='';
+ if(!S.birthday&&!$('#nm').value.trim()){err.textContent='名前を入れてください';return}
+ if(!S.birthday&&!$('#bd').value){err.textContent='誕生日を入れてください';return}
+ if(!pick){err.textContent='パパかママを選んでください';return}
+ try{if(!S.birthday){$('#startBtn').textContent='登録しています…';S=await call('setSettings',{birthday:$('#bd').value,name:$('#nm').value.trim()})}
+  role=pick;store.set('vl-role',role);route()}catch(e){err.textContent=e.message||String(e);$('#startBtn').textContent='はじめる'}
+});
+
+/* ---- 設定 ---- */
+function fillSettings(){
+ $('#sBd').value=S.birthday;$('#sName').value=S.name||'';
+ $('#sTz').innerHTML=TZS.concat(TZS.some(t=>t[0]===S.tz)?[]:[[S.tz,S.tz]]).map(([v,l])=>`<option value="${v}" ${v===S.tz?'selected':''}>${l}</option>`).join('');
+ $('#sWho').value=role||'';$('#sErr').textContent='';
+}
+$('#sSave').addEventListener('click',async()=>{
+ if(!$('#sBd').value){$('#sErr').textContent='誕生日を入れてください';return}
+ const b=$('#sSave');b.textContent='保存しています…';
+ try{S=await call('setSettings',{birthday:$('#sBd').value,name:$('#sName').value.trim(),tz:$('#sTz').value});TZ=S.tz;render();compose($('#form'),targetAge());toast('保存しました')}
+ catch(e){$('#sErr').textContent=e.message||String(e)}b.textContent='保存する'});
+$('#sWhoSave').addEventListener('click',async()=>{const nw=$('#sWho').value.trim(),old=role;if(!nw)return toast('名前を入れてください');if(nw===old)return toast('同じ名前です');
+ const b=$('#sWhoSave');b.textContent='変えています…';
+ try{if($('#sWhoAll').checked&&S.letters.some(l=>l.author===old))S=await call('renameAuthor',old,nw);
+  role=nw;store.set('vl-role',role);render();compose($('#form'),targetAge());toast(`「${nw}より」にしました`)}catch(e){toast(e.message||String(e))}b.textContent='差出人を変える'});
+$('#sPreview').addEventListener('click',async()=>{const k=(S.giftUrl.match(/[?&]k=([^&]+)/)||[])[1]||'demo';
+ MODE='gift';GKEY=k;fromParent=true;
+ try{demoUnlock=true;G=await call('giftState',k);
+  /* 親が見るプレビューは、届いた日の画面をそのまま出す（開封日前は声だけ聴けない） */
+  if(!G.opened)G={...G,opened:true,preview:true,letters:S.letters.slice().sort((a,b)=>a.age-b.age)};
+  /* 届いた瞬間から見られるよう、封筒の画面をもう一度出す */
+  intro=introTpl.cloneNode(true);document.body.prepend(intro);introDone=false;
+  const n=toName(G.name);$('#introTo').textContent=`${n}へ`;startIntro();route()}
+ catch(e){MODE='parent';toast(e.message||String(e))}});
+$('#gBack').addEventListener('click',()=>{MODE='parent';fromParent=false;demoUnlock=false;route();tab('settings')});
+
+/* ---- カウントダウン（秒まで） ---- */
+function countdown(openAt,cEl,kEl){if(!openAt)return false;const open=new Date(openAt),now=new Date();if(now>=open)return true;
+ const s=Math.floor((open-now)/1000);
+ cEl.innerHTML=`<div><b>${Math.floor(s/86400).toLocaleString('ja-JP')}</b><span>日</span></div><div><b>${p2(Math.floor(s%86400/3600))}</b><span>時間</span></div><div><b>${p2(Math.floor(s%3600/60))}</b><span>分</span></div><div><b>${p2(s%60)}</b><span>秒</span></div>`;
+ if(kEl)kEl.textContent='';return false}
+setInterval(()=>{
+ if(!$('#app').hidden&&S&&countdown(S.openAt,$('#count'),$('#clock'))){$('#count').innerHTML=`<div><b>${has(S.openAge,role)?'届ける日です':'最後の手紙です'}</b></div>`;$('#clock').textContent=''}
+ if(!$('#gift').hidden&&G&&!G.opened&&G.openAt&&new Date()>=new Date(G.openAt)){G.opened=true;load()}
+},1000);
+
+/* ---- 登録側の表示 ---- */
+function render(){
+ $('#title').innerHTML=`${S.openAge}歳の${esc(toName(S.name))}へ<span>毎年の想いと思い出を声にのせる</span>`;
+ $('#count').dataset.c='';countdown(S.openAt,$('#count'),$('#clock'));
+ const o={};S.letters.forEach(l=>(o[l.age]=o[l.age]||[]).push(l));
+ const ta=targetAge(),N=S.openAge;
+ $('#sumN').textContent=Object.keys(o).length;$('#sumT').textContent=`/ ${N+1}`;
+ $('#sendCard').innerHTML=`<div><b>手紙を送付する</b><p>${S.sentAt?`${fmtD(S.sentAt)} 送付済み`:`${fmtJ(S.openAt)}に届ける`}</p></div><button class="btn" id="sendBtn">${S.sentAt?'もう一度送付する':'送付する'}</button>`;
+ $('#sendBtn').addEventListener('click',sendSheet);
+ $('#grid').innerHTML=`<svg width="0" height="0" style="position:absolute"><defs><radialGradient id="waxS" cx=".36" cy=".34" r=".75"><stop offset="0" style="stop-color:var(--sealHi)"/><stop offset="1" style="stop-color:var(--seal)"/></radialGradient></defs></svg>`+
+ Array.from({length:N+1},(_,a)=>{const ls=o[a]||[],W=a===N?x=>waxGold(waxInner(x)):waxInner,st=ls.length?'sealed':a===ta?'next':a>ta?'future':'empty';
+  const art=ls.length?`<path class="fl" d="M2 4 L60 52 L118 4"/><svg x="39" y="32" width="42" height="42" viewBox="0 0 100 100" overflow="visible" class="wsv">${W(a)}</svg>`
+   :`<path class="fl" d="M2 4 L60 52 L118 4"/><text class="en" x="60" y="72">${a}</text>`;
+  const cap=ls.length?ls.map(l=>esc(l.author)).join('・'):st==='next'?'次はここ':st==='empty'?'＋':'';
+  return `<button class="env ${st}${a===N?' red':''}" data-age="${a}" ${st==='future'?'disabled':''} aria-label="${a===0?'誕生':a+'歳'}の手紙"><svg viewBox="0 0 120 84"><rect class="pp" x="1" y="1" width="118" height="82" rx="4"/>${art}</svg><small>${cap}</small></button>`}).join('');
+}
+
+/* ---- 送付（自分のスマホのSMSで送る） ---- */
+function sendSheet(){
+ const from=[...new Set(S.letters.map(l=>l.author))].join('と')||role;
+ const mk=f=>`${toName(S.name)}へ\n${S.openAge}歳の誕生日、おめでとう。\n${f||'家族'}から、生まれてから今までの${S.openAge}年間、毎年貯めていた声の手紙を届けます。\n${S.giftUrl}`,msg=mk(from);
+ show(`<h3>手紙を送付する</h3><p class="sub">あなたのスマホのSMSアプリを開いて送ります。</p>${new Date()<new Date(S.openAt)?`<p class="early">まだ${S.openAge}歳の誕生日の前です。今送ると、相手には「${fmtJ(S.openAt)}に開けられます」という案内だけが出て、手紙は開けられません。</p>`:''}
+  <div class="row" style="margin-top:22px"><label for="tel">電話番号</label><input type="tel" id="tel" inputmode="tel" autocomplete="tel" placeholder="090-1234-5678"></div>
+  <div class="row"><label for="fromNm">差出人の名前</label><input id="fromNm" maxlength="30" value="${esc(from)}" placeholder="例：パパとママ"></div>
+  <div class="row"><label for="msg">メッセージ</label><textarea id="msg" rows="6">${esc(msg)}</textarea></div>
+  <p class="err" id="telErr"></p>
+  <a class="btn full" id="smsBtn" href="#" target="_top">SMSアプリで送る</a>
+  <button class="btn ghost full" id="copyBtn" style="margin-top:10px">メッセージをコピー</button>
+  <p class="note" style="margin-top:12px">SMSアプリが開かないときは、コピーして送ってください。電話番号は保存しません。</p>`);
+ const link=()=>{const n=$('#tel').value.replace(/[^\d+]/g,'');$('#smsBtn').href=`sms:${n}?&body=${encodeURIComponent($('#msg').value)}`;return n};
+ let edited=false;$('#fromNm').addEventListener('input',()=>{if(!edited){$('#msg').value=mk($('#fromNm').value.trim())}link()});
+ $('#tel').addEventListener('input',link);$('#msg').addEventListener('input',()=>{edited=true;link()});link();
+ $('#smsBtn').addEventListener('click',async e=>{if(link().replace('+','').length<10){e.preventDefault();$('#telErr').textContent='電話番号を入れてください';return}
+  $('#telErr').textContent='';try{S=await call('markSent');render()}catch(x){}});
+ $('#copyBtn').addEventListener('click',async()=>{try{await navigator.clipboard.writeText($('#msg').value);toast('コピーしました')}catch(e){$('#msg').select();toast('長押しでコピーしてください')}});
+}
+
+/* ---- シート ---- */
+const ov=$('#ov'),sheet=$('#sheet');
+let onHide=null;
+function show(html){sheet.innerHTML=html;ov.hidden=false;document.body.style.overflow='hidden'}
+function hide(){if(F&&sheet.contains(F)){stopRec(true);compose($('#form'),targetAge())}sheet.querySelectorAll('audio').forEach(a=>a.pause());ov.hidden=true;sheet.innerHTML='';document.body.style.overflow='';if(onHide){const f=onHide;onHide=null;f()}}
+$('#close').addEventListener('click',hide);
+ov.addEventListener('click',e=>{if(e.target===ov)hide()});
+
+/* ---- 声を入れる（F＝いま使っているフォーム） ---- */
+let F=null,rec=null,stream=null,ac=null,raf=0,timer=0,t0=0,voice=null,secs=0,photo=null,fAge=0;
+const q=s=>F.querySelector(s);
+let editId=null;
+function compose(root,age,edit,opened){
+ stopRec(true);F=root;fAge=age;voice=null;secs=0;photo=null;editId=edit||null;
+ if(!editId&&root.id==='form'&&has(age,role)&&age===S.openAge){root.innerHTML=`<div class="lock"><div class="hold" style="cursor:default;margin-top:6px"><div class="wx">${waxSvg(age)}</div></div>
+  <h3>${S.openAge}年間、お疲れ様でした</h3><p class="sub" style="font-size:16px;line-height:1.9">${esc(toName(S.name))}さんはどんな反応をするか、<br>楽しみですね。</p>
+  <button class="btn full" id="goSend" style="margin-top:26px">手紙を届ける</button></div>`;
+  root.querySelector('#goSend').addEventListener('click',()=>{tab('sent');sendSheet()});return}
+ if(!editId&&root.id==='form'&&has(age,role)){root.innerHTML=`<div class="lock"><div class="hold" style="cursor:default;margin-top:6px"><div class="wx">${waxSvg(age)}</div></div>
+  <h3>今年の分はしまいました</h3><p class="sub">次は ${bdayJ(age+1)}（${age+1}歳の誕生日）です。<br>入れそびれた年は「送った手紙」から追加できます。</p></div>`;return}
+ const late=age<ageNow();
+ if(root.id==='form'&&!editId&&!opened){
+  root.innerHTML=`<button class="envstage${age===S.openAge?' red':''}" aria-label="手紙を開いて声を入れる">
+   <svg viewBox="0 0 520 420" aria-hidden="true">
+    <ellipse class="i-shade" cx="262" cy="398" rx="214" ry="12"/>
+    <rect class="i-paper" x="40" y="114" width="440" height="276" rx="6"/>
+    <path class="i-paper i-flapo" d="M40 114 L260 6 L480 114 Z"/>
+    <g class="i-letter"><rect class="p" x="78" y="128" width="364" height="230" rx="4"/><text x="260" y="196">${esc(toName(S.name))}へ</text></g>
+    <path class="i-paper" d="M40 114 L260 292 L480 114 L480 384 Q480 390 474 390 L46 390 Q40 390 40 384 Z"/><path class="fold" d="M46 386 L252 298 M474 386 L268 298"/><path class="tex" d="M40 114 L260 292 L480 114 L480 384 Q480 390 474 390 L46 390 Q40 390 40 384 Z"/>
+    <path class="i-paper i-flap" d="M40 114 L260 292 L480 114 Z"/><path class="tex i-flap" d="M40 114 L260 292 L480 114 Z"/>
+   </svg>
+   <span class="envcap"><b>${ageLabel(age)}の手紙</b><span>タップして開く</span></span></button>`;
+  const st=root.querySelector('.envstage');
+  st.addEventListener('click',()=>{if(st.classList.contains('go'))return;st.classList.add('go');
+   setTimeout(()=>{if(F===root&&fAge===age)compose(root,age,null,true)},matchMedia('(prefers-reduced-motion:reduce)').matches?100:1500)});
+  return}
+ F.innerHTML=`
+ <div class="paper">
+  <p class="to">${esc(toName(S.name))}へ</p>
+  <p class="occ">${editId?'録り直し · ':late?'あとから入れる手紙 · ':''}${ageLabel(age)}の手紙</p>
+  <div class="lines"><canvas class="wave"></canvas><span class="ph">ここに、想いをのこしてください</span></div>
+  <label class="btn full upl">ボイスメモ・動画を選ぶ<input type="file" class="afile"></label>
+  <button type="button" class="howbtn">入れ方を見る</button>
+  <audio class="pre" controls hidden></audio>
+  <p class="sub hint"></p>
+  <p class="sign">${bdayD(age)}<br>${esc(role)}より</p>
+ </div>
+ <div class="act"></div>`;
+ sealBtnBack();
+ q('.howbtn').addEventListener('click',howTo);
+ q('.afile').addEventListener('change',async e=>{const f=e.target.files[0];if(!f)return;stopRec(true);secs=0;
+  /* そのまま使える音声（m4a・mp3・wav など）以外は、声だけを取り出して使う。動画や、新しい形式のボイスメモ（.qta）もここを通る */
+  if(!(/^audio\//.test(f.type)&&/\.(m4a|mp3|wav|aac|caf|ogg|webm)$/i.test(f.name))){const hint=q('.hint'),root=F;hint.textContent='声を取り出しています…';
+   try{const w=await audioOnly(f);if(F!==root)return;setVoice(w);inkWave()}catch(x){if(F===root)hint.textContent='';toast('このファイルからは声を取り出せませんでした。別のファイルでお試しください')}
+   return}
+  setVoice(f);inkWave()});
+}
+function setVoice(b){voice=b;F.querySelector('.paper')?.classList.add('has');{const u=F.querySelector('.upl');if(u){u.firstChild.textContent='別のファイルを選び直す';u.classList.add('ghost')}}const p=q('.pre');p.src=URL.createObjectURL(b);p.hidden=false;
+ p.onloadedmetadata=()=>{if(!secs&&isFinite(p.duration))secs=Math.round(p.duration)};
+ q('.hint').textContent='聞き返して、よければ封をしてください。'}
+async function toggleRec(){
+ if(rec&&rec.state==='recording'){rec.stop();return}
+ if(!navigator.mediaDevices?.getUserMedia||!window.MediaRecorder){noMic();return}
+ try{stream=await navigator.mediaDevices.getUserMedia({audio:true})}catch(e){noMic();return}
+ const mime=['audio/mp4','audio/webm;codecs=opus','audio/webm'].find(t=>MediaRecorder.isTypeSupported(t))||'';
+ const chunks=[];rec=new MediaRecorder(stream,mime?{mimeType:mime}:{});
+ rec.ondataavailable=e=>{if(e.data.size)chunks.push(e.data)};
+ rec.onstop=()=>{const s=Math.round((Date.now()-t0)/1000);stopRec(false);secs=s;setVoice(new Blob(chunks,{type:rec.mimeType||mime||'audio/webm'}))};
+ F.querySelector('.paper')?.classList.add('has');rec.start(250);t0=Date.now();q('.recbtn').classList.add('on');q('.hint').textContent='録音中… もう一度押すと止まります';
+ timer=setInterval(()=>{const t=(Date.now()-t0)/1000;q('.time').textContent=mmss(t);if(t>=600)rec.stop()},250);
+ meter(stream);
+}
+function stopRec(abort){clearInterval(timer);cancelAnimationFrame(raf);
+ if(abort&&rec&&rec.state==='recording'){rec.onstop=null;rec.stop()}
+ if(ac){ac.close().catch(()=>{});ac=null}if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}
+ if(F){const b=F.querySelector('.recbtn');if(b)b.classList.remove('on')}}
+/* ファイルを選んだときは、便箋に声の波形を描いておく */
+function inkWave(){const cv=q('.wave');if(!cv)return;const r=devicePixelRatio||1,W=cv.width=cv.clientWidth*r,H=cv.height=cv.clientHeight*r,g=cv.getContext('2d');g.fillStyle=getComputedStyle(cv).color;
+ g.globalAlpha=.7;const n=Math.floor(W/(5*r));for(let i=0;i<n;i++){const v=Math.abs(Math.sin(i*.37)*Math.sin(i*.11+1))*.8+.12,bh=Math.max(2*r,v*H*.55);g.fillRect(i*5*r,(H-bh)/2,2*r,bh)}}
+function noMic(){stopRec(true);const r=q('.recarea'),t=q('.rectg');if(r)r.hidden=true;if(t)t.remove();toast('この端末では録音できないため、ボイスメモを選んでください')}
+function meter(st){try{ac=new(window.AudioContext||window.webkitAudioContext)();const an=ac.createAnalyser();an.fftSize=1024;ac.createMediaStreamSource(st).connect(an);
+ const buf=new Uint8Array(an.fftSize),cv=q('.wave'),g=cv.getContext('2d'),col=getComputedStyle(cv).color,hist=[],r=devicePixelRatio||1;
+ const loop=()=>{an.getByteTimeDomainData(buf);let m=0;for(const v of buf)m=Math.max(m,Math.abs(v-128));hist.push(m/128);
+  const W=cv.width=cv.clientWidth*r,H=cv.height=cv.clientHeight*r,n=Math.floor(W/(5*r)),h=hist.slice(-n);g.fillStyle=col;g.globalAlpha=.7;
+  h.forEach((v,i)=>{const bh=Math.max(2*r,Math.min(1,v*1.6)*H*.6);g.fillRect(W-(h.length-i)*5*r,(H-bh)/2,2*r,bh)});raf=requestAnimationFrame(loop)};loop()}catch(e){}}
+/* 動画を選んだときは、声だけを取り出して小さな音声ファイルにする（映像は保存しない） */
+async function audioOnly(file){
+ if(file.size>400*1024*1024)throw new Error('big');
+ const AC=window.AudioContext||window.webkitAudioContext,ctx=new AC();
+ let buf;try{buf=await new Promise(async(ok,ng)=>{try{const p=ctx.decodeAudioData(await file.arrayBuffer(),ok,ng);if(p&&p.catch)p.catch(ng)}catch(e){ng(e)}})}finally{ctx.close().catch(()=>{})}
+ const SR=22050,n=Math.max(1,Math.ceil(buf.duration*SR)),off=new (window.OfflineAudioContext||window.webkitOfflineAudioContext)(1,n,SR),src=off.createBufferSource();
+ src.buffer=buf;src.connect(off.destination);src.start();const out=(await off.startRendering()).getChannelData(0);
+ const dv=new DataView(new ArrayBuffer(44+out.length*2)),W=(o,t)=>[...t].forEach((c,i)=>dv.setUint8(o+i,c.charCodeAt(0)));
+ W(0,'RIFF');dv.setUint32(4,36+out.length*2,true);W(8,'WAVEfmt ');dv.setUint32(16,16,true);dv.setUint16(20,1,true);dv.setUint16(22,1,true);dv.setUint32(24,SR,true);dv.setUint32(28,SR*2,true);dv.setUint16(32,2,true);dv.setUint16(34,16,true);W(36,'data');dv.setUint32(40,out.length*2,true);
+ for(let i=0;i<out.length;i++){const v=Math.max(-1,Math.min(1,out[i]));dv.setInt16(44+i*2,v<0?v*0x8000:v*0x7fff,true)}
+ secs=Math.round(buf.duration);return new Blob([dv],{type:'audio/wav'})}
+/* 入れ方の説明（押したときだけ、上に重ねて出す） */
+function howTo(){const o=document.createElement('div');o.className='howov';
+ const ic={mic:'<svg viewBox="0 0 48 48" aria-hidden="true"><rect x="14" y="4" width="20" height="40" rx="5" class="hd"/><g class="hw"><rect x="19" y="20" width="2" height="8"/><rect x="23" y="16" width="2" height="16"/><rect x="27" y="19" width="2" height="10"/></g></svg>',
+  share:'<svg viewBox="0 0 48 48" aria-hidden="true"><path d="M24 6v20M16 13l8-8 8 8" class="hl"/><path d="M12 22v18h24V22" class="hl"/></svg>',
+  file:'<svg viewBox="0 0 48 48" aria-hidden="true"><path d="M6 14q0-3 3-3h10l4 5h16q3 0 3 3v17q0 3-3 3H9q-3 0-3-3z" class="hd"/><circle cx="24" cy="28" r="5" class="hs"/></svg>',
+  cam:'<svg viewBox="0 0 48 48" aria-hidden="true"><rect x="5" y="13" width="27" height="22" rx="4" class="hd"/><path d="M32 21l11-6v18l-11-6z" class="hd"/><circle cx="14" cy="20" r="2.4" class="hs"/></svg>',
+  lib:'<svg viewBox="0 0 48 48" aria-hidden="true"><rect x="7" y="9" width="34" height="30" rx="4" class="hd"/><path d="M7 32l10-10 8 8 5-5 11 11" class="hl"/></svg>'};
+ const st=a=>`<ol>${a.map(([i,b,t])=>`<li>${ic[i]}<b>${b}</b><span>${t}</span></li>`).join('')}</ol>`;
+ o.innerHTML=`<div class="howbox" role="dialog" aria-modal="true" aria-label="声の入れ方"><button class="x" type="button">閉じる</button><h3>声の入れ方</h3>
+  <h4>A. 動画で撮る<small>かんたん</small></h4>${st([['cam','撮る','カメラの動画で、話しながら撮る'],['lib','選ぶ','「選ぶ」ボタン → 写真ライブラリ'],['mic','声だけ残る','映像は保存されず、声だけが手紙になる']])}
+  <h4>B. ボイスメモで録る</h4>${st([['mic','録る','ボイスメモで今年の声を録る'],['share','保存する','共有ボタン →「"ファイル"に保存」'],['file','選ぶ','「選ぶ」ボタン → ファイルを選択']])}
+  <p>長い動画は取り出しに時間がかかります。3分くらいまでがおすすめです。</p></div>`;
+ const close=()=>o.remove();o.addEventListener('click',e=>{if(e.target===o||e.target.closest('.x'))close()});document.body.append(o)}
+const b64=b=>new Promise((ok,ng)=>{const r=new FileReader();r.onload=()=>ok(String(r.result).split(',')[1]);r.onerror=ng;r.readAsDataURL(b)});
+function sealBtnBack(){q('.act').innerHTML='<button class="btn full seal">封をする</button><p class="note" style="text-align:center;margin:10px 0 0">封をしたら、開封の日まで聞き返せません</p>';q('.seal').addEventListener('click',confirmSeal)}
+function confirmSeal(){
+ if(rec&&rec.state==='recording'){toast('録音を止めてから封をしてください');return}
+ if(!voice){toast('ボイスメモか動画を選んでください');return}
+ q('.act').innerHTML=`<p class="sub" style="text-align:center">${ageLabel(fAge)}の手紙として封をします。<br>開封の日まで聞き返せません。</p><div class="pair"><button class="btn ghost back">もどる</button><button class="btn go">封をする</button></div>`;
+ q('.back').addEventListener('click',sealBtnBack);
+ q('.go').addEventListener('click',doSeal);
+}
+const wait=ms=>new Promise(r=>setTimeout(r,ms));
+/* 手紙をしまって、ロウで封をして、ビューンと飛んでいく */
+function sealAnim(age){
+ const RMs=matchMedia('(prefers-reduced-motion:reduce)').matches;
+ let w='';for(let i=0;i<40;i++){const v=Math.abs(Math.sin(i*.41)*Math.sin(i*.13+1.2))*.85+.15,bh=4+v*40;w+=`<rect x="${(132+i*6.4).toFixed(1)}" y="${(262-bh/2).toFixed(1)}" width="2.6" height="${bh.toFixed(1)}" rx="1.3"/>`}
+ const gold=age===S.openAge,WI=gold?x=>waxGold(waxInner(x)):waxInner,WB=gold?()=>waxGold(waxBlob()):waxBlob;
+ const o=document.createElement('div');o.className='so'+(gold?' red':'');
+ o.innerHTML=`<svg viewBox="0 0 520 420" aria-hidden="true"><defs><radialGradient id="waxF" cx=".36" cy=".34" r=".75"><stop offset="0" style="stop-color:var(--sealHi)"/><stop offset="1" style="stop-color:var(--seal)"/></radialGradient></defs>
+  <g class="so-env">
+   <ellipse class="i-shade" cx="262" cy="398" rx="214" ry="12"/>
+   <rect class="i-paper" x="40" y="114" width="440" height="276" rx="6"/>
+   <path class="i-paper so-flapo" d="M40 114 L260 6 L480 114 Z"/>
+   <g class="so-letter i-letter" style="opacity:1"><rect class="p" x="78" y="128" width="364" height="230" rx="4"/><text x="260" y="196" style="letter-spacing:.08em">Voice Letter</text><g class="w">${w}</g></g>
+   <path class="i-paper" d="M40 114 L260 292 L480 114 L480 384 Q480 390 474 390 L46 390 Q40 390 40 384 Z"/><path class="fold" d="M46 386 L252 298 M474 386 L268 298"/><path class="tex" d="M40 114 L260 292 L480 114 L480 384 Q480 390 474 390 L46 390 Q40 390 40 384 Z"/>
+   <path class="i-paper so-flap" d="M40 114 L260 292 L480 114 Z"/><path class="tex so-flap" d="M40 114 L260 292 L480 114 Z"/>
+   <g class="so-wax"><svg id="soWax" x="194" y="227" width="132" height="132" viewBox="0 0 100 100" overflow="visible" class="wsv"><g class="wb">${WB()}</g><g class="wi">${WI(age)}</g><g class="wsh">${STAMP_SHD}</g><g class="wst">${STAMP}</g></svg></g>
+  </g></svg><p class="so-msg"><b>封をして、大切にしまっておきますね</b><span class="sub"></span></p>`;
+ document.body.append(o);
+ {const w=o.querySelector('#soWax');if(RMs)w.querySelector('.wi').style.opacity=1;else stampRun(w,1750)}
+ const stamped=wait(RMs?150:5200);
+ return{
+  async done(title,sub){await stamped;o.querySelector('.so-env').classList.add('fly');await wait(RMs?150:800);
+   o.querySelector('.so-msg b').textContent=title;o.querySelector('.so-msg .sub').textContent=sub;o.classList.add('done');
+   await Promise.race([wait(2200),new Promise(r=>o.addEventListener('click',r,{once:true}))]);o.classList.add('out');await wait(500);o.remove()},
+  fail(){o.remove()}}
+}
+async function doSeal(){
+ const a=fAge,edit=editId;q('.act').innerHTML='<p class="sub" style="text-align:center;margin-top:12px">封をしています…</p>';
+ const anim=sealAnim(a);
+ try{const p={age:a,author:role,seconds:secs,voice:{b64:await b64(voice),mime:voice.type||'audio/mp4'}};
+  S=await call(edit?'replaceVoice':'saveLetter',...(edit?[edit,p]:[p]));
+  render();F=null;compose($('#form'),targetAge());if(!ov.hidden)hide();
+  await anim.done(edit?'もう一度、封をしました':a===S.openAge?`${S.openAge}年間、お疲れ様でした`:'封をしました',a===S.openAge&&!edit?'さあ、届けましょう':`${fmtJ(S.openAt)}に届きます`);
+ }catch(e){anim.fail();q('.act').innerHTML=`<p class="err">保存できませんでした：${esc(e.message||e)}</p><button class="btn full seal">もう一度封をする</button>`;q('.seal').addEventListener('click',doSeal)}
+}
+
+/* ---- 開ける ---- */
+function lock(id){
+ const l=S.letters.find(x=>x.id===id),early=new Date()<new Date(S.openAt);
+ const head=`<p class="eyebrow">${ageLabel(l.age)} · ${esc(l.author)}より${l.seconds?' · 声 '+mmss(l.seconds):''}</p>`;
+ if(!early){show(`<div class="lock">${head}<h3>開封の日です</h3><button class="btn full" id="go" style="margin-top:22px">手紙を開ける</button></div>`);$('#go').addEventListener('click',()=>reveal(id));return}
+ show(`<div class="lock">${head}<h3>封をした手紙です</h3>
+  <p class="sub">封を${HOLD_MS/1000}秒長押しすると、開いて編集できます。</p>
+  <button class="hold" id="hold" aria-label="封を長押しする"><svg viewBox="0 0 100 100"><circle class="bg" cx="50" cy="50" r="46"/><circle class="prog" id="prog" cx="50" cy="50" r="46"/></svg><span class="wx">${waxSvg(l.age)}</span></button>
+  <p class="sub" id="holdHint">長押し</p></div>`);
+ const L=2*Math.PI*46,pr=$('#prog'),btn=$('#hold');pr.style.strokeDasharray=L;pr.style.strokeDashoffset=L;
+ let st=0,rf=0,done=false;
+ const step=t=>{const p=Math.min(1,(t-st)/HOLD_MS);pr.style.strokeDashoffset=L*(1-p);$('#holdHint').textContent=p<1?`あと ${Math.ceil((HOLD_MS-(t-st))/1000)} 秒`:'開けています…';
+  if(p>=1){done=true;reveal(id);return}rf=requestAnimationFrame(step)};
+ const start=e=>{if(done)return;e.preventDefault();st=performance.now();rf=requestAnimationFrame(step)};
+ const stop=()=>{if(done)return;cancelAnimationFrame(rf);pr.style.strokeDashoffset=L;$('#holdHint').textContent='長押し'};
+ btn.addEventListener('pointerdown',start);['pointerup','pointerleave','pointercancel'].forEach(v=>btn.addEventListener(v,stop));
+ btn.addEventListener('contextmenu',e=>e.preventDefault());
+}
+async function reveal(id){
+ try{const r=await call('openLetter',id);if(r.early)S=await call('getState');render();
+  show(`<p class="eyebrow">${ageLabel(r.age)} · ${esc(r.author)}より · ${fmtD(r.createdAt)}</p><h3>${r.age===0?'生まれた日の':r.age+'歳の'}${esc(toName(S.name))}へ</h3>
+   ${r.voice?`<audio controls src="${r.voice}"></audio>`:r.sample?'<p class="note">サンプルのため、声はありません。</p>':''}
+   <div id="edAct"><div class="pair" style="margin-top:22px"><button class="btn ghost" id="delBtn">この手紙を消す</button><button class="btn" id="reBtn">声を録り直す</button></div>
+   <p class="note" style="margin-top:14px;text-align:center">閉じると、また封をした状態に戻ります。</p></div>`);
+  $('#reBtn').addEventListener('click',()=>{const l=S.letters.find(x=>x.id===id);show('<h3>声を録り直す</h3><div id="sform" style="margin-top:20px"></div>');$('#form').innerHTML='';compose($('#sform'),l.age,id)});
+  $('#delBtn').addEventListener('click',()=>{$('#edAct').innerHTML=`<p class="sub" style="text-align:center;margin-top:22px">${ageLabel(r.age)}の${esc(r.author)}の手紙を消します。<br>声のファイルはドライブのゴミ箱に移ります。</p><div class="pair"><button class="btn ghost" id="noDel">やめる</button><button class="btn" id="yesDel" style="background:var(--warn);border-color:var(--warn)">消す</button></div>`;
+   $('#noDel').addEventListener('click',()=>reveal(id));
+   $('#yesDel').addEventListener('click',async()=>{$('#yesDel').disabled=true;try{S=await call('deleteLetter',id);render();compose($('#form'),targetAge());hide();toast('手紙を消しました')}catch(e){toast(e.message||String(e))}})});
+ }catch(e){const h=$('#holdHint');if(h)h.textContent=e.message||String(e);else toast(e.message||String(e))}
+}
+function addVoice(a){stopRec(true);show('<h3>声を入れる</h3><div id="sform" style="margin-top:20px"></div>');$('#form').innerHTML='';compose($('#sform'),a)}
+$('#grid').addEventListener('click',e=>{const b=e.target.closest('.env');if(!b||b.disabled)return;
+ const a=+b.dataset.age,ls=S.letters.filter(l=>l.age===a),mine=ls.some(l=>l.author===role);
+ if(!ls.length){addVoice(a);return}
+ if(ls.length===1&&(mine||a>targetAge())){lock(ls[0].id);return}
+ show(`<h3>${a===0?'生まれた日':a+'歳'}の手紙</h3><div style="display:grid;gap:10px;margin-top:20px">${ls.map(l=>`<button class="btn ghost full" data-pick="${esc(l.id)}">${esc(l.author)}の手紙${l.seconds?' · '+mmss(l.seconds):''}</button>`).join('')}${!mine?`<button class="btn full" data-add="1">＋ ${esc(role)}の声を入れる</button>`:''}</div>`);
+ sheet.querySelectorAll('[data-pick]').forEach(x=>x.addEventListener('click',()=>lock(x.dataset.pick)));
+ const ad=sheet.querySelector('[data-add]');if(ad)ad.addEventListener('click',()=>addVoice(a));
+});
+
+/* ======== 受け取る側 ======== */
+function renderGift(){
+ const name=toName(G.name);
+ $('#gBack').hidden=!fromParent;
+ $('#gCount').innerHTML='';$('#gClock').innerHTML='';$('#gList').innerHTML='';$('#gCta').innerHTML='';$('#gNote').textContent='';
+ if(!G.opened){
+  $('#gTitle').textContent=`${name}へ`;
+  $('#gSub').innerHTML=`この手紙は、${G.openAge}歳の誕生日<br>（${fmtJ(G.openAt)}）に開けられます。`;
+  $('#gNote').innerHTML=`<span style="display:block;font:500 17px/2 'Shippori Mincho',serif;color:var(--ink)">その日まで、<br>楽しみに待っていてください。</span>`;
+  return}
+ const from=[...new Set(G.letters.map(l=>l.author))].join('と')||'家族';
+ {const t=`${from}から、${name}へ`;$('#gTitle').textContent=t;$('#gTitle').style.cssText=`white-space:nowrap;font-size:min(46px,calc((100vw - 44px) / ${t.length}))`}
+ const op=new Date(G.openAt),bo=new Date(op);bo.setFullYear(op.getFullYear()-G.openAge);
+ const hrs=Math.round((op-bo)/36e5);
+ $('#gSub').textContent=`0歳から${G.openAge}歳まで`;
+ $('#gCount').innerHTML=`<div><b id="gHrs">0</b><span>時間</span></div>`;
+ $('#gNote').innerHTML=`<span style="display:block;font:500 17px/2 'Shippori Mincho',serif;color:var(--ink);text-wrap:balance">${G.openAge}年間の想いを、<br>声の手紙で、あなたに届けます。</span>`;
+ {const el=$('#gHrs'),t0=performance.now(),RMg=matchMedia('(prefers-reduced-motion:reduce)').matches;const f=t=>{const p=RMg?1:Math.min(1,(t-t0)/2200);el.textContent=Math.round(hrs*(1-Math.pow(1-p,4))).toLocaleString('ja-JP');if(p<1)requestAnimationFrame(f)};requestAnimationFrame(f)}
+ const seen=new Set((store.get('vl-seen')||'').split(',').filter(Boolean));
+ $('#gList').className='envs';
+ /* 0歳〜17歳の18通ぶんを並べる（声のない年は空の封筒） */
+ let k=0;const envSvg=inner=>`<svg viewBox="0 0 120 84"><rect class="pp" x="1" y="1" width="118" height="82" rx="4"/><path class="fl" d="M2 4 L60 52 L118 4"/>${inner}</svg>`;
+ $('#gList').innerHTML=Array.from({length:G.openAge+1},(_,a)=>{const red=a===G.openAge?' red':'',W=red?x=>waxGold(waxInner(x)):waxInner;const ls=G.letters.map((l,i)=>[l,i]).filter(([l])=>l.age===a),lab=a===0?'誕生':a+'歳';
+  if(!ls.length)return `<button class="env gift none${red}" disabled aria-label="${lab}の手紙はありません">${envSvg(`<text class="en" x="60" y="76">${a}</text>`)}<small>${lab}</small></button>`;
+  return ls.map(([l,i])=>`<button class="env sealed gift${red} ${seen.has(l.id)?'seen':''}" data-i="${i}" style="animation-delay:${((k++)*.06).toFixed(2)}s" aria-label="${ageLabel(l.age)}・${esc(l.author)}より">${envSvg(`<svg x="39" y="32" width="42" height="42" viewBox="0 0 100 100" overflow="visible" class="wsv">${W(l.age)}</svg>`)}<small>${lab} · ${esc(l.author)}</small></button>`).join('')}).join('');
+}
+$('#gList').addEventListener('click',e=>{const b=e.target.closest('.env');if(b&&!b.disabled)giftLetter(+b.dataset.i)});
+async function giftLetter(i){
+ const l=G.letters[i];
+ show(`<div class="reveal"><div class="unseal">${waxSvg(l.age)}</div><p class="eyebrow">${ageLabel(l.age)} · ${esc(l.author)}より · ${fmtD(l.createdAt)}</p><h3>${l.age===0?'生まれた日の':l.age+'歳の'}${esc(toName(G.name))}へ</h3><p class="sub" id="gLoad">封を開けています…</p><div id="gBody"></div></div>`);
+ if(G.preview&&(LIVE||WEB)){$('#gLoad').textContent='プレビューです。声は開封日から聴けます。';return}
+ try{const r=await call('giftOpen',GKEY,l.id);
+  const seen=new Set((store.get('vl-seen')||'').split(',').filter(Boolean));seen.add(l.id);store.set('vl-seen',[...seen].join(','));
+  $('#gLoad').remove();
+  $('#gBody').innerHTML=r.voice?`<audio controls src="${r.voice}"></audio>`:r.sample?'<p class="note" style="margin-top:14px">サンプルのため、声はありません。</p>':'';
+  onHide=renderGift;
+ }catch(e){$('#gLoad').textContent=e.message||String(e)}
+}
+
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!ov.hidden)hide()});
+$('#mode').textContent=(LIVE||WEB)?'':'プレビュー（サンプル表示）';
+boot();
+}
+</script>
+</body></html>
