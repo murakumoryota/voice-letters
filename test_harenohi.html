@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Voice Letters 共有テスト</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP",sans-serif;background:#f7f5f2;color:#2b2927;line-height:1.7}
+main{max-width:520px;margin:0 auto;padding:24px 18px 60px}
+h1{font-size:20px;margin:0 0 4px}
+.sub{font-size:13px;color:#77716b;margin:0 0 20px}
+.card{background:#fff;border-radius:14px;padding:18px;margin:0 0 14px;border:1px solid #e8e3dc}
+.card.off{opacity:.45;pointer-events:none}
+h2{font-size:15px;margin:0 0 8px}
+p{font-size:14px;margin:0 0 10px}
+button{font:inherit;font-size:15px;width:100%;padding:13px;border-radius:10px;border:0;background:#3d3b39;color:#fff;margin:4px 0}
+button.sec{background:#fff;color:#3d3b39;border:1px solid #3d3b39}
+button:disabled{opacity:.4}
+input{font:inherit;font-size:16px;width:100%;padding:12px;border-radius:10px;border:1px solid #cfc8bf;margin:4px 0}
+.ok{color:#2e7d4f;font-size:13px}
+.ng{color:#9c1f1a;font-size:13px}
+.link{font-size:12px;word-break:break-all;background:#f7f5f2;padding:10px;border-radius:8px}
+ul{padding:0;margin:8px 0 0;list-style:none;font-size:13px}
+li{padding:8px 0;border-top:1px solid #eee}
+li span{color:#77716b;display:block;font-size:12px}
+#log{font-size:11px;color:#77716b;white-space:pre-wrap;word-break:break-all;margin-top:20px}
+</style>
+</head>
+<body>
+<main>
+<h1>Voice Letters 共有テスト</h1>
+<p class="sub">夫婦で同じフォルダに声を入れられるかを確かめるページです。</p>
+
+<div class="card" id="c1">
+  <h2>1. ログイン</h2>
+  <button id="bLogin">Googleでログイン</button>
+  <div id="sLogin"></div>
+</div>
+
+<div class="card off" id="cOwner">
+  <h2>2. フォルダを作って招待する</h2>
+  <button id="bMake">フォルダを作る</button>
+  <div id="sMake"></div>
+  <input id="mail" type="email" placeholder="招待する人のGmail" autocomplete="off">
+  <button id="bInvite" disabled>招待する</button>
+  <div id="sInvite"></div>
+</div>
+
+<div class="card off" id="cGuest" hidden>
+  <h2>2. 招待されたフォルダを選ぶ</h2>
+  <p>ボタンを押すと、フォルダが1つ出ます。それを選んでください。</p>
+  <button id="bPick">フォルダを選ぶ</button>
+  <button id="bPick2" class="sec">出てこないときはこちら</button>
+  <div id="sPick"></div>
+</div>
+
+<div class="card off" id="c3">
+  <h2>3. 声を入れる（5秒）</h2>
+  <button id="bRec">録音して入れる</button>
+  <div id="sRec"></div>
+</div>
+
+<div class="card off" id="c4">
+  <h2>4. フォルダの中身を見る</h2>
+  <button id="bList" class="sec">中身を見る</button>
+  <div id="sList"></div>
+  <ul id="list"></ul>
+</div>
+
+<div id="log"></div>
+</main>
+
+<script>
+const CLIENT_ID='737250624512-4k1i10879qjoo0uut3695964hbhji1h1.apps.googleusercontent.com';
+const API_KEY='AIzaSyCEroLkaWBDEzafTIzfc0S3sMcZCn5_-r8';
+const APP_ID='737250624512';
+const SCOPE='https://www.googleapis.com/auth/drive.file';
+const $=id=>document.getElementById(id);
+const invited=new URLSearchParams(location.search).get('f');
+let token='',folder='',tc=null,pickerReady=false;
+
+function log(m){$('log').textContent+=m+'\n'}
+function st(id,m,ok){$(id).innerHTML='<p class="'+(ok?'ok':'ng')+'">'+m+'</p>'}
+function on(id){$(id).classList.remove('off')}
+
+if(invited){$('cOwner').hidden=true;$('cGuest').hidden=false}
+else{try{folder=localStorage.getItem('vl_test_folder')||''}catch(e){}}
+
+async function api(path,opt={}){
+  const r=await fetch('https://www.googleapis.com/'+path,{...opt,headers:{Authorization:'Bearer '+token,...(opt.headers||{})}});
+  const t=await r.text();let j={};try{j=JSON.parse(t)}catch(e){}
+  if(!r.ok){log(path.split('?')[0]+' → '+r.status+' '+(j.error&&j.error.message||t));throw new Error(j.error&&j.error.message||r.status)}
+  return j;
+}
+
+$('bLogin').onclick=()=>{
+  if(!window.google||!google.accounts){st('sLogin','読み込み中です。少し待ってもう一度押してください。');return}
+  if(!tc)tc=google.accounts.oauth2.initTokenClient({client_id:CLIENT_ID,scope:SCOPE,callback:r=>{
+    if(r.error){st('sLogin','ログインできませんでした：'+r.error);log(JSON.stringify(r));return}
+    token=r.access_token;st('sLogin','ログインできました',true);
+    if(invited){on('cGuest')}else{on('cOwner');if(folder){st('sMake','前に作ったフォルダを使います',true);$('bInvite').disabled=false;on('c3');on('c4')}}
+  }});
+  tc.requestAccessToken();
+};
+
+$('bMake').onclick=async()=>{
+  try{
+    const j=await api('drive/v3/files?fields=id',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({name:'Voice Letters（共有テスト）',mimeType:'application/vnd.google-apps.folder'})});
+    folder=j.id;try{localStorage.setItem('vl_test_folder',folder)}catch(e){}
+    st('sMake','フォルダを作りました',true);$('bInvite').disabled=false;on('c3');on('c4');
+  }catch(e){st('sMake','作れませんでした：'+e.message)}
+};
+
+$('bInvite').onclick=async()=>{
+  const m=$('mail').value.trim();
+  if(!m){st('sInvite','Gmailを入れてください');return}
+  try{
+    await api('drive/v3/files/'+folder+'/permissions?sendNotificationEmail=false',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({type:'user',role:'writer',emailAddress:m})});
+    const u=location.origin+location.pathname+'?f='+folder;
+    $('sInvite').innerHTML='<p class="ok">招待しました。下のリンクを相手に送ってください。</p><p class="link" id="lnk">'+u+'</p><button class="sec" id="bCopy">リンクをコピー</button>';
+    $('bCopy').onclick=()=>navigator.clipboard.writeText(u).then(()=>{$('bCopy').textContent='コピーしました'});
+  }catch(e){st('sInvite','招待できませんでした：'+e.message)}
+};
+
+function openPicker(byId){
+  if(!pickerReady){st('sPick','読み込み中です。少し待ってもう一度押してください。');return}
+  const v=new google.picker.DocsView(google.picker.ViewId.FOLDERS)
+    .setIncludeFolders(true).setSelectFolderEnabled(true).setMimeTypes('application/vnd.google-apps.folder');
+  if(byId&&v.setFileIds)v.setFileIds(invited);else v.setOwnedByMe(false);
+  new google.picker.PickerBuilder().addView(v).setOAuthToken(token).setDeveloperKey(API_KEY).setAppId(APP_ID)
+    .setCallback(async d=>{
+      if(d.action!==google.picker.Action.PICKED)return;
+      const id=d.docs[0].id;
+      if(id!==invited){st('sPick','ちがうフォルダです。「Voice Letters（共有テスト）」を選んでください。');return}
+      try{
+        const j=await api('drive/v3/files/'+id+'?fields=id,name,capabilities(canAddChildren)');
+        folder=id;
+        st('sPick','「'+j.name+'」につながりました'+(j.capabilities&&j.capabilities.canAddChildren?'':'（ただし書き込みの許可がありません）'),true);
+        on('c3');on('c4');
+      }catch(e){st('sPick','フォルダを開けませんでした：'+e.message)}
+    }).build().setVisible(true);
+}
+$('bPick').onclick=()=>openPicker(true);
+$('bPick2').onclick=()=>openPicker(false);
+
+$('bRec').onclick=async()=>{
+  const b=$('bRec');b.disabled=true;
+  try{
+    const s=await navigator.mediaDevices.getUserMedia({audio:true});
+    const type=['audio/mp4','audio/webm;codecs=opus','audio/webm'].find(t=>window.MediaRecorder&&MediaRecorder.isTypeSupported(t))||'';
+    const rec=new MediaRecorder(s,type?{mimeType:type}:{});const ch=[];
+    rec.ondataavailable=e=>{if(e.data.size)ch.push(e.data)};
+    const done=new Promise(r=>rec.onstop=r);
+    rec.start();
+    for(let i=5;i>0;i--){st('sRec','録音中… あと'+i+'秒',true);await new Promise(r=>setTimeout(r,1000))}
+    rec.stop();await done;s.getTracks().forEach(t=>t.stop());
+    const mt=(rec.mimeType||type||'audio/mp4').split(';')[0];
+    const blob=new Blob(ch,{type:mt});
+    st('sRec','フォルダに入れています…',true);
+    const d=new Date(),p=n=>String(n).padStart(2,'0');
+    const name='テスト_'+p(d.getMonth()+1)+p(d.getDate())+'_'+p(d.getHours())+p(d.getMinutes())+p(d.getSeconds())+(mt.includes('mp4')?'.m4a':'.webm');
+    const fd=new FormData();
+    fd.append('metadata',new Blob([JSON.stringify({name,parents:[folder],mimeType:mt})],{type:'application/json'}));
+    fd.append('file',blob);
+    await api('upload/drive/v3/files?uploadType=multipart&fields=id',{method:'POST',body:fd});
+    st('sRec','入りました：'+name+'（'+Math.round(blob.size/1024)+'KB）',true);
+  }catch(e){st('sRec','できませんでした：'+e.message)}
+  b.disabled=false;
+};
+
+$('bList').onclick=async()=>{
+  try{
+    const q=encodeURIComponent("'"+folder+"' in parents and trashed=false");
+    const j=await api('drive/v3/files?q='+q+'&fields=files(id,name,createdTime,owners(displayName))&orderBy=createdTime');
+    const f=j.files||[];
+    st('sList',f.length+'件 見えています',true);
+    $('list').innerHTML=f.map(x=>'<li>'+x.name+'<span>入れた人：'+((x.owners&&x.owners[0]&&x.owners[0].displayName)||'不明')+'</span></li>').join('');
+  }catch(e){st('sList','見られませんでした：'+e.message)}
+};
+
+function gapiLoaded(){gapi.load('picker',()=>{pickerReady=true})}
+</script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="https://apis.google.com/js/api.js" async defer onload="gapiLoaded()"></script>
+</body>
+</html>
